@@ -1,5 +1,8 @@
 You must define an action type in order for this to function properly.
 
+
+DECLARE @LatestUserIP varchar(50);
+
 -- PvP Kill logging
 IF @ActionType = 103
 
