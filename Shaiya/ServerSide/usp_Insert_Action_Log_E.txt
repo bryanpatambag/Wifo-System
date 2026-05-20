@@ -3,6 +3,11 @@ You must define an action type in order for this to function properly.
 -- PvP Kill logging
 IF @ActionType = 103
 
+    INSERT INTO PS_GameLog.dbo.PvP_Log
+    (UserID, UserUID, CharID, CharName,MapID, PosX, PosY, PosZ, ActionTime, ActionType, UserIP)
+    VALUES (@UserID, @UserUID, @CharID, @CharName, @MapID, @PosX, @PosY, @PosZ, @ActionTime, @ActionType,
+             @LatestUserIP);
+
     -- call status update
     EXEC securetech.dbo.Kill_Status;
 
@@ -16,7 +21,6 @@ IF @ActionType = 103
 -- Leave logging (Logout)
 IF @ActionType = 108
     EXEC [securetech].[dbo].[Online_Status];
-
 
 
 -- Enter logging (Login)
