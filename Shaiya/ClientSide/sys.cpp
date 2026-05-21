@@ -59,22 +59,10 @@ inline void saveConfig(PanelUIState& ui) {
     WritePrivateProfileStringW(ui.sectionName, L"OffsetY", buf, ui.configFile);
 }
 
-PanelUIState buttonUi{
-    200, -300, 250, 140, nullptr, nullptr, PANEL_HIDE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"BUTTON_UI", 200, -300
-};
-
-PanelUIState feedUi{
-    600, -300, 250, 140, nullptr, nullptr, PANEL_FEED, {} , false, nullptr, 0, 0, L".\\panel.ini", L"FEED_UI", 600, -300
-};
-
-PanelUIState killUi{
-    900, -300, 250, 140, nullptr, nullptr, PANEL_KILL, {} , false, nullptr, 0, 0, L".\\panel.ini", L"KILL_UI", 900, -300
-};
-
-PanelUIState onlineUi{
-    1000, -300, 250, 140, nullptr, nullptr, PANEL_ONLINE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"ONLINE_UI", 1000, -300
-};
-
+PanelUIState buttonUi{200, -300, 250, 140, nullptr, nullptr, PANEL_HIDE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"BUTTON_UI", 200, -300};
+PanelUIState feedUi{600, -300, 250, 140, nullptr, nullptr, PANEL_FEED, {} , false, nullptr, 0, 0, L".\\panel.ini", L"FEED_UI", 600, -300};
+PanelUIState killUi{900, -300, 250, 140, nullptr, nullptr, PANEL_KILL, {} , false, nullptr, 0, 0, L".\\panel.ini", L"KILL_UI", 900, -300};
+PanelUIState onlineUi{1000, -300, 250, 140, nullptr, nullptr, PANEL_ONLINE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"ONLINE_UI", 1000, -300};
 PanelUIState hideButton{ 205, 1, 32, 32, &hide_button, &hide_button_hover, PANEL_HIDE };
 PanelUIState feedButton{ 16, 32, 32, 32, &feed_button, &feed_button_hover, PANEL_FEED };
 PanelUIState killButton{ 85, 32, 32, 32, &kill_button, &kill_button_hover, PANEL_KILL };
@@ -193,9 +181,6 @@ void updateStatusKill(const char* val) {
     }
 }
 
-inline constexpr int KILL_PROGRESS_WIDTH = 230;
-inline constexpr int PROGRESS_WIDTH = 230;
-
 enum ProgressType {
     PROGRESS_NORMAL,
     PROGRESS_KILL
@@ -222,6 +207,7 @@ inline void __stdcall renderProgressBarGeneric(
     }
 }
 
+inline constexpr int KILL_PROGRESS_WIDTH = 230; inline constexpr int PROGRESS_WIDTH = 230;
 inline void renderProgressBar(
     int x, int y, int percent,
     void* barTexture, bool fromRight,
@@ -231,11 +217,8 @@ inline void renderProgressBar(
     renderProgressBarGeneric(x, y, percent, barTexture, fromRight, maxWidth);
 }
 
-const char* AoLFrames[] = { loadbar_AoL, loadbar_AoL_alt1, loadbar_AoL_alt2, loadbar_AoL_alt3, loadbar_AoL_alt4, loadbar_AoL_alt5
-};
-
-const char* UoFFrames[] = { loadbar_UoF, loadbar_UoF_alt1, loadbar_UoF_alt2, loadbar_UoF_alt3, loadbar_UoF_alt4, loadbar_UoF_alt5
-};
+const char* AoLFrames[] = { loadbar_AoL, loadbar_AoL_alt1, loadbar_AoL_alt2, loadbar_AoL_alt3, loadbar_AoL_alt4, loadbar_AoL_alt5};
+const char* UoFFrames[] = { loadbar_UoF, loadbar_UoF_alt1, loadbar_UoF_alt2, loadbar_UoF_alt3, loadbar_UoF_alt4, loadbar_UoF_alt5};
 
 inline const char* SelectKillTexture(const char** frames, unsigned int frameCount) {
     unsigned int tick = GetTickCount();
@@ -395,8 +378,7 @@ inline void renderPanel(PanelType type) {
             {20,112, feed_text_5, 255,255,255,0}
         };
         for (auto& t : feedTexts) {
-            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY,
-                t.text, t.r, t.g, t.b, t.a);
+            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
 
@@ -414,8 +396,7 @@ inline void renderPanel(PanelType type) {
             {150,32, PERCENT_FURY_KILL,  255,255,255,0}
         };
         for (auto& t : killTexts) {
-            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY,
-                t.text, t.r, t.g, t.b, t.a);
+            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
 
@@ -446,8 +427,7 @@ inline void renderPanel(PanelType type) {
             {170,145,ORACLE,  255,255,255,0}
         };
         for (auto& t : onlineTexts) {
-            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY,
-                t.text, t.r, t.g, t.b, t.a);
+            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
 }
