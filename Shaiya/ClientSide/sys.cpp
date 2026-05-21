@@ -5,23 +5,33 @@
 #include <io.h>
 #include <cstdio>
 
+enum PanelType {
+    PANEL_HIDE,
+    PANEL_FEED,
+    PANEL_KILL,
+    PANEL_ONLINE
+};
+
 struct PanelUIState {
     int offsetX;
     int offsetY;
+    int width;
+    int height;
+    void* background = nullptr;
+    PanelType targetPanel = PANEL_HIDE;
     POINT lastMousePos{};
     bool dragging = false;
     HWND gameHwnd = nullptr;
     int baseX = 0;
     int baseY = 0;
-    const wchar_t* configFile;
-    const wchar_t* sectionName;
-    int defaultOffsetX;
-    int defaultOffsetY;
-    int width;
-    int height;
+    const wchar_t* configFile = nullptr;
+    const wchar_t* sectionName = nullptr;
+    int defaultOffsetX = 0;
+    int defaultOffsetY = 0;
 };
 
 inline void createDefaultConfig(PanelUIState& ui) {
+    if (!ui.configFile || !ui.sectionName) return;
     wchar_t buf[32];
     swprintf(buf, 32, L"%d", ui.defaultOffsetX);
     WritePrivateProfileStringW(ui.sectionName, L"OffsetX", buf, ui.configFile);
@@ -30,6 +40,7 @@ inline void createDefaultConfig(PanelUIState& ui) {
 }
 
 inline void loadConfig(PanelUIState& ui) {
+    if (!ui.configFile || !ui.sectionName) return;
     if (_access((const char*)ui.configFile, 0) != 0) {
         createDefaultConfig(ui);
     }
@@ -39,6 +50,7 @@ inline void loadConfig(PanelUIState& ui) {
 }
 
 inline void saveConfig(PanelUIState& ui) {
+    if (!ui.configFile || !ui.sectionName) return;
     wchar_t buf[32];
     swprintf(buf, 32, L"%d", ui.offsetX);
     WritePrivateProfileStringW(ui.sectionName, L"OffsetX", buf, ui.configFile);
@@ -46,57 +58,27 @@ inline void saveConfig(PanelUIState& ui) {
     WritePrivateProfileStringW(ui.sectionName, L"OffsetY", buf, ui.configFile);
 }
 
-constexpr int BUTTON_PANEL_WIDTH = 250;
-constexpr int BUTTON_PANEL_HEIGHT = 140;
-constexpr int BUTTON_DEFAULT_OFFSET_X = 200;
-constexpr int BUTTON_DEFAULT_OFFSET_Y = -300;
-
-constexpr int FEED_PANEL_WIDTH = 250;
-constexpr int FEED_PANEL_HEIGHT = 140;
-constexpr int FEED_DEFAULT_OFFSET_X = 600;
-constexpr int FEED_DEFAULT_OFFSET_Y = -300;
-
-constexpr int KILL_PANEL_WIDTH = 250;
-constexpr int KILL_PANEL_HEIGHT = 140;
-constexpr int KILL_DEFAULT_OFFSET_X = 900;
-constexpr int KILL_DEFAULT_OFFSET_Y = -300;
-
-constexpr int ONLINE_PANEL_WIDTH = 250;
-constexpr int ONLINE_PANEL_HEIGHT = 140;
-constexpr int ONLINE_DEFAULT_OFFSET_X = 1000;
-constexpr int ONLINE_DEFAULT_OFFSET_Y = -300;
-
 PanelUIState buttonUi{
-    BUTTON_DEFAULT_OFFSET_X, BUTTON_DEFAULT_OFFSET_Y,
-    {}, false, nullptr, 0, 0,
-    L".\\panel.ini", L"BUTTON_UI",
-    BUTTON_DEFAULT_OFFSET_X, BUTTON_DEFAULT_OFFSET_Y,
-    BUTTON_PANEL_WIDTH, BUTTON_PANEL_HEIGHT
+    200, -300, 250, 140, nullptr, PANEL_HIDE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"BUTTON_UI", 200, -300
 };
 
 PanelUIState feedUi{
-    FEED_DEFAULT_OFFSET_X, FEED_DEFAULT_OFFSET_Y,
-    {}, false, nullptr, 0, 0,
-    L".\\panel.ini", L"FEED_UI",
-    FEED_DEFAULT_OFFSET_X, FEED_DEFAULT_OFFSET_Y,
-    FEED_PANEL_WIDTH, FEED_PANEL_HEIGHT
+    600, -300, 250, 140, nullptr, PANEL_FEED, {} , false, nullptr, 0, 0, L".\\panel.ini", L"FEED_UI", 600, -300
 };
 
 PanelUIState killUi{
-    KILL_DEFAULT_OFFSET_X, KILL_DEFAULT_OFFSET_Y,
-    {}, false, nullptr, 0, 0,
-    L".\\panel.ini", L"KILL_UI",
-    KILL_DEFAULT_OFFSET_X, KILL_DEFAULT_OFFSET_Y,
-    KILL_PANEL_WIDTH, KILL_PANEL_HEIGHT
+    900, -300, 250, 140, nullptr, PANEL_KILL, {} , false, nullptr, 0, 0, L".\\panel.ini", L"KILL_UI", 900, -300
 };
 
 PanelUIState onlineUi{
-    ONLINE_DEFAULT_OFFSET_X, ONLINE_DEFAULT_OFFSET_Y,
-    {}, false, nullptr, 0, 0,
-    L".\\panel.ini", L"ONLINE_UI",
-    ONLINE_DEFAULT_OFFSET_X, ONLINE_DEFAULT_OFFSET_Y,
-    ONLINE_PANEL_WIDTH, ONLINE_PANEL_HEIGHT
+    1000, -300, 250, 140, nullptr, PANEL_ONLINE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"ONLINE_UI", 1000, -300
 };
+
+PanelUIState hideButton{ 205, 1, 32, 32, &hide_button, PANEL_HIDE };
+PanelUIState feedButton{ 16, 32, 32, 32, &feed_button, PANEL_FEED };
+PanelUIState killButton{ 85, 32, 32, 32, &kill_button, PANEL_KILL };
+PanelUIState onlineButton{ 154, 32, 32, 32, &online_button, PANEL_ONLINE };
+PanelUIState buttonBackground{ 0, 200, 250, 140, &toolbar_background, PANEL_HIDE };
 
 auto ONLINE_format = "[ONLINE]";
 char ON[128] = "Total: 0";
@@ -120,7 +102,6 @@ bool isAoLLeading2 = false;
 bool isUoFLeading2 = false;
 int g_lightPercentInt2 = 0;
 int g_furyPercentInt2 = 0;
-
 void updateStatusOnline(const char* val) {
     int total = 0, lightCount = 0, lightPercent = 0, furyCount = 0, furyPercent = 0;
     int fighter = 0, defender = 0, ranger = 0, archer = 0, mage = 0, priest = 0;
@@ -133,13 +114,11 @@ void updateStatusOnline(const char* val) {
     if (matched >= 5 && total > 0) {
         g_lightPercentInt2 = lightPercent;
         g_furyPercentInt2 = furyPercent;
-        double lightPercentCalc = static_cast<double>(lightPercent);
-        double furyPercentCalc = static_cast<double>(furyPercent);
         snprintf(ON, sizeof(ON), "Total: %d", total);
         snprintf(LI, sizeof(LI), "Light: %d", lightCount);
         snprintf(FU, sizeof(FU), "Fury: %d", furyCount);
-        snprintf(PERCENT_LIGHT, sizeof(PERCENT_LIGHT), "AoL: %.2f%%%%", lightPercentCalc);
-        snprintf(PERCENT_FURY, sizeof(PERCENT_FURY), "UoF: %.2f%%%%", furyPercentCalc);
+        snprintf(PERCENT_LIGHT, sizeof(PERCENT_LIGHT), "AoL: %.2f%%%%", (double)lightPercent);
+        snprintf(PERCENT_FURY, sizeof(PERCENT_FURY), "UoF: %.2f%%%%", (double)furyPercent);
         snprintf(FIGHTER, sizeof(FIGHTER), "Fighter: %d", fighter);
         snprintf(DEFENDER, sizeof(DEFENDER), "Defender: %d", defender);
         snprintf(RANGER, sizeof(RANGER), "Ranger: %d", ranger);
@@ -216,11 +195,9 @@ void updateStatusKill(const char* val) {
 inline constexpr int KILL_PROGRESS_WIDTH = 230;
 inline constexpr int PROGRESS_WIDTH = 230;
 inline void __stdcall renderProgressBarGeneric(int x, int y, int percent,
-    void* barTexture, bool fromRight,
-    int maxWidth) {
+    void* barTexture, bool fromRight, int maxWidth) {
     if (percent < 0) percent = 0;
     if (percent > 100) percent = 100;
-
     int width = (percent * maxWidth) / 100;
     for (int i = 0; i < width; i++) {
         int drawX = fromRight ? (x - i) : (x + i);
@@ -229,7 +206,7 @@ inline void __stdcall renderProgressBarGeneric(int x, int y, int percent,
             push drawY
             push drawX
             mov ecx, barTexture
-            call render_tga
+            call isRenderObjectSingle
         }
     }
 }
@@ -242,18 +219,17 @@ inline void renderProgressBar(int x, int y, int percent, void* barTexture, bool 
     renderProgressBarGeneric(x, y, percent, barTexture, fromRight, PROGRESS_WIDTH);
 }
 
-const char* AoLFrames[] = {
-    loadbar_AoL, loadbar_AoL_alt1, loadbar_AoL_alt2, loadbar_AoL_alt3, loadbar_AoL_alt4, loadbar_AoL_alt5 //ANIMATION IMAGE
+const char* AoLFrames[] = {loadbar_AoL, loadbar_AoL_alt1, loadbar_AoL_alt2, loadbar_AoL_alt3, loadbar_AoL_alt4, loadbar_AoL_alt5
 };
 
-const char* UoFFrames[] = {
-    loadbar_UoF, loadbar_UoF_alt1, loadbar_UoF_alt2, loadbar_UoF_alt3, loadbar_UoF_alt4, loadbar_UoF_alt5 //ANIMATION IMAGE
+const char* UoFFrames[] = {loadbar_UoF, loadbar_UoF_alt1, loadbar_UoF_alt2, loadbar_UoF_alt3, loadbar_UoF_alt4, loadbar_UoF_alt5
 };
 
 inline const char* SelectKillTexture(const char** frames, unsigned int frameCount) {
     unsigned int tick = GetTickCount();
     unsigned int speed = 120;
     unsigned int cycle = (tick / speed) % (frameCount * 2 - 2);
+
     unsigned int frameIndex;
     if (cycle < frameCount) {
         frameIndex = cycle;
@@ -268,7 +244,7 @@ DWORD aolStartTick = 0;
 DWORD uofStartTick = 0;
 int lastAoLPercent = -1;
 int lastUoFPercent = -1;
-const DWORD ANIMATION_DURATION = 5000; // 5 SECONDS TO STOP ANIMATION
+const DWORD ANIMATION_DURATION = 5000; // 5 SECONDS
 const char* GetAoLTextureWithStop(int percent) {
     DWORD now = GetTickCount();
     if (percent > lastAoLPercent && percent >= g_furyPercentIntKill) {
@@ -344,42 +320,12 @@ inline void parseAndHandle(void* espBase) {
     reinterpret_cast<void(__stdcall*)(DWORD)>(render_notice)((DWORD)arg);
 }
 
-enum PanelType {
-    PANEL_HIDE,
-    PANEL_FEED,
-    PANEL_KILL,
-    PANEL_ONLINE
-};
-
 struct TextEntry {
     int offsetX;
     int offsetY;
     const char* text;
     int r, g, b, a;
 };
-
-static PanelUIState* panelUi[] = {
-    nullptr,   // PANEL_HIDE
-    &feedUi,   // PANEL_FEED
-    &killUi,   // PANEL_KILL
-    &onlineUi  // PANEL_ONLINE
-};
-
-static void* panelBackgrounds[] = {
-    nullptr,                // PANEL_HIDE
-    &globalkill_background, // PANEL_FEED
-    &killfeed_background,   // PANEL_KILL
-    &online_background      // PANEL_ONLINE
-};
-
-inline void renderBackground(void* background, int x, int y) {
-    __asm {
-        push y
-        push x
-        mov ecx, background
-        call render_tga
-    }
-}
 
 inline void renderPercentTextUnified(int x, int y, const char* text,
     int r, int g, int b, int a) {
@@ -397,9 +343,30 @@ inline void renderPercentTextUnified(int x, int y, const char* text,
     }
 }
 
+static void* panelBackgrounds[] = {
+    nullptr,                // PANEL_HIDE
+    &globalkill_background, // PANEL_FEED
+    &killfeed_background,   // PANEL_KILL
+    &online_background      // PANEL_ONLINE
+};
+
+inline void renderBackground(void* background, int x, int y) {
+    __asm {
+        push y
+        push x
+        mov ecx, background
+        call isRenderObjectSingle
+    }
+}
+
 inline void renderPanel(PanelType type) {
-    PanelUIState* ui = panelUi[type];
-    if (!ui) return;
+    PanelUIState* ui = nullptr;
+    switch (type) {
+    case PANEL_FEED: ui = &feedUi; break;
+    case PANEL_KILL: ui = &killUi; break;
+    case PANEL_ONLINE: ui = &onlineUi; break;
+    default: return;
+    }
     int panelX = ui->baseX + ui->offsetX;
     int panelY = ui->baseY + ui->offsetY;
     if (panelBackgrounds[type]) {
@@ -462,29 +429,7 @@ inline void renderPanel(PanelType type) {
 }
 
 PanelType g_activePanel = PANEL_HIDE;
-inline void setActivePanel(PanelType type) {
-    g_activePanel = type;
-}
-
-struct ButtonUIState {
-    int offsetX, offsetY;
-    int width, height;
-    PanelType targetPanel;
-    void* background;
-};
-
-static void* hideBtnBackground = &hide_button;     // HIDE button image
-static void* feedBtnBackground = &feed_button;   // FEED button image
-static void* killBtnBackground = &kill_button;     // KILL button image
-static void* onlineBtnBackground = &online_button;   // ONLINE button image
-static void* buttonBackground = &toolbar_background;    // BACKGROUND button image
-
-ButtonUIState hideButton{ 205, 1, 32, 32, PANEL_HIDE, hideBtnBackground };
-ButtonUIState feedButton{ 16, 32, 32, 32, PANEL_FEED, feedBtnBackground };
-ButtonUIState killButton{ 85, 32, 32, 32, PANEL_KILL, killBtnBackground };
-ButtonUIState onlineButton{ 154,32, 32, 32, PANEL_ONLINE, onlineBtnBackground };
 PanelUIState* g_activeDraggingPanel = nullptr;
-
 inline void handleMovementExclusive(PanelUIState& ui) {
     POINT curPos;
     if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
@@ -519,7 +464,7 @@ inline void handleMovementExclusive(PanelUIState& ui) {
     }
 }
 
-inline void renderButton(const ButtonUIState& btn, int baseX, int baseY) {
+inline void renderButton(const PanelUIState& btn, int baseX, int baseY) {
     int bx = baseX + btn.offsetX;
     int by = baseY + btn.offsetY;
     renderBackground(btn.background, bx, by);
@@ -529,42 +474,24 @@ inline void renderButton(const ButtonUIState& btn, int baseX, int baseY) {
         if (buttonUi.gameHwnd) ScreenToClient(buttonUi.gameHwnd, &curPos);
         if (curPos.x >= bx && curPos.x <= bx + btn.width &&
             curPos.y >= by && curPos.y <= by + btn.height) {
-            setActivePanel(btn.targetPanel);
+            g_activePanel = btn.targetPanel;
         }
     }
 }
 
 inline void doAllPanels(int baseX, int baseY) {
     switch (g_activePanel) {
-    case PANEL_FEED:
-        feedUi.baseX = baseX;
-        feedUi.baseY = baseY;
-        handleMovementExclusive(feedUi);
-        renderPanel(PANEL_FEED);
-        break;
-    case PANEL_KILL:
-        killUi.baseX = baseX;
-        killUi.baseY = baseY;
-        handleMovementExclusive(killUi);
-        renderPanel(PANEL_KILL);
-        break;
-    case PANEL_ONLINE:
-        onlineUi.baseX = baseX;
-        onlineUi.baseY = baseY;
-        handleMovementExclusive(onlineUi);
-        renderPanel(PANEL_ONLINE);
-        break;
-    case PANEL_HIDE:
-    default:
-        break;
+    case PANEL_FEED: feedUi.baseX = baseX; feedUi.baseY = baseY; handleMovementExclusive(feedUi); renderPanel(PANEL_FEED); break;
+    case PANEL_KILL: killUi.baseX = baseX; killUi.baseY = baseY; handleMovementExclusive(killUi); renderPanel(PANEL_KILL); break;
+    case PANEL_ONLINE: onlineUi.baseX = baseX; onlineUi.baseY = baseY; handleMovementExclusive(onlineUi); renderPanel(PANEL_ONLINE); break;
+    default: break;
     }
-
     buttonUi.baseX = baseX;
     buttonUi.baseY = baseY + 200;
     handleMovementExclusive(buttonUi);
     int bx = buttonUi.baseX + buttonUi.offsetX;
     int by = buttonUi.baseY + buttonUi.offsetY;
-    renderBackground(buttonBackground, bx, by);
+    renderBackground(buttonBackground.background, bx, by);
     renderButton(hideButton, bx, by);
     renderButton(feedButton, bx, by);
     renderButton(killButton, bx, by);
@@ -574,16 +501,14 @@ inline void doAllPanels(int baseX, int baseY) {
 auto u0x47DD54 = 0x47DD54;
 __declspec(naked) void naked_0x47DD4D() {
     __asm {
-        mov eax, [ebx + 4]   // baseX
-        mov ecx, [ebx + 8]   // baseY
-
+        mov eax, [ebx + 4]
+        mov ecx, [ebx + 8]
         pushad
-        push ecx             // baseY
-        push eax             // baseX
+        push ecx
+        push eax
         call doAllPanels
         add esp, 8
         popad
-
         movzx eax, byte ptr[ebx + 0x3CC]
         jmp u0x47DD54
     }
@@ -603,9 +528,7 @@ __declspec(naked) void naked_0x5F3740() {
 
 void hook::online() {
     PanelUIState* panels[] = { &onlineUi, &killUi, &feedUi, &buttonUi };
-    for (auto* ui : panels) {
-        loadConfig(*ui);
-    }
+    for (auto* ui : panels) loadConfig(*ui);
     util::detour((void*)0x47DD4D, naked_0x47DD4D, 7);
     util::detour((void*)0x5F3740, naked_0x5F3740, 5);
 }
