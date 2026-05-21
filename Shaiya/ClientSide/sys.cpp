@@ -18,6 +18,7 @@ struct PanelUIState {
     int width;
     int height;
     void* background = nullptr;
+    void* hoverBackground = nullptr;
     PanelType targetPanel = PANEL_HIDE;
     POINT lastMousePos{};
     bool dragging = false;
@@ -59,25 +60,25 @@ inline void saveConfig(PanelUIState& ui) {
 }
 
 PanelUIState buttonUi{
-    200, -300, 250, 140, nullptr, PANEL_HIDE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"BUTTON_UI", 200, -300
+    200, -300, 250, 140, nullptr, nullptr, PANEL_HIDE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"BUTTON_UI", 200, -300
 };
 
 PanelUIState feedUi{
-    600, -300, 250, 140, nullptr, PANEL_FEED, {} , false, nullptr, 0, 0, L".\\panel.ini", L"FEED_UI", 600, -300
+    600, -300, 250, 140, nullptr, nullptr, PANEL_FEED, {} , false, nullptr, 0, 0, L".\\panel.ini", L"FEED_UI", 600, -300
 };
 
 PanelUIState killUi{
-    900, -300, 250, 140, nullptr, PANEL_KILL, {} , false, nullptr, 0, 0, L".\\panel.ini", L"KILL_UI", 900, -300
+    900, -300, 250, 140, nullptr, nullptr, PANEL_KILL, {} , false, nullptr, 0, 0, L".\\panel.ini", L"KILL_UI", 900, -300
 };
 
 PanelUIState onlineUi{
-    1000, -300, 250, 140, nullptr, PANEL_ONLINE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"ONLINE_UI", 1000, -300
+    1000, -300, 250, 140, nullptr, nullptr, PANEL_ONLINE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"ONLINE_UI", 1000, -300
 };
 
-PanelUIState hideButton{ 205, 1, 32, 32, &hide_button, PANEL_HIDE };
-PanelUIState feedButton{ 16, 32, 32, 32, &feed_button, PANEL_FEED };
-PanelUIState killButton{ 85, 32, 32, 32, &kill_button, PANEL_KILL };
-PanelUIState onlineButton{ 154, 32, 32, 32, &online_button, PANEL_ONLINE };
+PanelUIState hideButton{ 205, 1, 32, 32, &hide_button, &hide_button_hover, PANEL_HIDE };
+PanelUIState feedButton{ 16, 32, 32, 32, &feed_button, &feed_button_hover, PANEL_FEED };
+PanelUIState killButton{ 85, 32, 32, 32, &kill_button, &kill_button_hover, PANEL_KILL };
+PanelUIState onlineButton{ 154, 32, 32, 32, &online_button, &online_button_hover, PANEL_ONLINE };
 PanelUIState buttonBackground{ 0, 200, 250, 140, &toolbar_background, PANEL_HIDE };
 
 auto ONLINE_format = "[ONLINE]";
@@ -467,15 +468,15 @@ inline void handleMovementExclusive(PanelUIState& ui) {
 inline void renderButton(const PanelUIState& btn, int baseX, int baseY) {
     int bx = baseX + btn.offsetX;
     int by = baseY + btn.offsetY;
-    renderBackground(btn.background, bx, by);
-    if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
-        POINT curPos;
-        GetCursorPos(&curPos);
-        if (buttonUi.gameHwnd) ScreenToClient(buttonUi.gameHwnd, &curPos);
-        if (curPos.x >= bx && curPos.x <= bx + btn.width &&
-            curPos.y >= by && curPos.y <= by + btn.height) {
-            g_activePanel = btn.targetPanel;
-        }
+    POINT curPos;
+    GetCursorPos(&curPos);
+    if (buttonUi.gameHwnd) ScreenToClient(buttonUi.gameHwnd, &curPos);
+    bool isHover = (curPos.x >= bx && curPos.x <= bx + btn.width &&
+        curPos.y >= by && curPos.y <= by + btn.height);
+    void* tex = (isHover && btn.hoverBackground) ? btn.hoverBackground : btn.background;
+    renderBackground(tex, bx, by);
+    if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {
+        g_activePanel = btn.targetPanel;
     }
 }
 
