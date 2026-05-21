@@ -230,7 +230,6 @@ inline const char* SelectKillTexture(const char** frames, unsigned int frameCoun
     unsigned int tick = GetTickCount();
     unsigned int speed = 120;
     unsigned int cycle = (tick / speed) % (frameCount * 2 - 2);
-
     unsigned int frameIndex;
     if (cycle < frameCount) {
         frameIndex = cycle;
@@ -382,8 +381,7 @@ inline void renderPanel(PanelType type) {
             {20,112, feed_text_5, 255,255,255,0}
         };
         for (auto& t : feedTexts) {
-            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY,
-                t.text, t.r, t.g, t.b, t.a);
+            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_KILL) {
@@ -395,8 +393,7 @@ inline void renderPanel(PanelType type) {
             {150,32, PERCENT_FURY_KILL,  255,255,255,0}
         };
         for (auto& t : killTexts) {
-            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY,
-                t.text, t.r, t.g, t.b, t.a);
+            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_ONLINE) {
@@ -423,8 +420,7 @@ inline void renderPanel(PanelType type) {
             {170,145,ORACLE,  255,255,255,0}
         };
         for (auto& t : onlineTexts) {
-            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY,
-                t.text, t.r, t.g, t.b, t.a);
+            renderPercentTextUnified(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
 }
@@ -436,12 +432,9 @@ inline void handleMovementExclusive(PanelUIState& ui) {
     if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
         GetCursorPos(&curPos);
         if (ui.gameHwnd) ScreenToClient(ui.gameHwnd, &curPos);
-
         int panelX = ui.baseX + ui.offsetX;
         int panelY = ui.baseY + ui.offsetY;
-
         if (g_activeDraggingPanel && g_activeDraggingPanel != &ui) return;
-
         if (curPos.x >= panelX && curPos.x <= panelX + ui.width &&
             curPos.y >= panelY && curPos.y <= panelY + ui.height) {
             if (!ui.dragging) {
@@ -471,8 +464,7 @@ inline void renderButton(const PanelUIState& btn, int baseX, int baseY) {
     POINT curPos;
     GetCursorPos(&curPos);
     if (buttonUi.gameHwnd) ScreenToClient(buttonUi.gameHwnd, &curPos);
-    bool isHover = (curPos.x >= bx && curPos.x <= bx + btn.width &&
-        curPos.y >= by && curPos.y <= by + btn.height);
+    bool isHover = (curPos.x >= bx && curPos.x <= bx + btn.width && curPos.y >= by && curPos.y <= by + btn.height);
     void* tex = (isHover && btn.hoverBackground) ? btn.hoverBackground : btn.background;
     renderBackground(tex, bx, by);
     if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {
