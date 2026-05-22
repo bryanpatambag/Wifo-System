@@ -8,7 +8,7 @@
 enum PanelType {
     PANEL_HIDE,
     PANEL_FEED,
-    PANEL_KILL,
+    PANEL_BALANCE,
     PANEL_ONLINE
 };
 
@@ -59,13 +59,13 @@ inline void saveConfig(PanelUIState& ui) {
     WritePrivateProfileStringW(ui.sectionName, L"OffsetY", buf, ui.configFile);
 }
 
-PanelUIState buttonUi{200, -300, 250, 140, nullptr, nullptr, PANEL_HIDE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"BUTTON_UI", 200, -300};
-PanelUIState feedUi{600, -300, 250, 140, nullptr, nullptr, PANEL_FEED, {} , false, nullptr, 0, 0, L".\\panel.ini", L"FEED_UI", 600, -300};
-PanelUIState killUi{900, -300, 250, 140, nullptr, nullptr, PANEL_KILL, {} , false, nullptr, 0, 0, L".\\panel.ini", L"KILL_UI", 900, -300};
-PanelUIState onlineUi{1000, -300, 250, 140, nullptr, nullptr, PANEL_ONLINE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"ONLINE_UI", 1000, -300};
+PanelUIState buttonUi{ 200, -300, 250, 140, nullptr, nullptr, PANEL_HIDE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"BUTTON_UI", 200, -300 };
+PanelUIState feedUi{ 600, -300, 250, 140, nullptr, nullptr, PANEL_FEED, {} , false, nullptr, 0, 0, L".\\panel.ini", L"FEED_UI", 600, -300 };
+PanelUIState balanceUi{ 900, -300, 250, 140, nullptr, nullptr, PANEL_BALANCE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"KILL_UI", 900, -300 };
+PanelUIState onlineUi{ 1000, -300, 250, 140, nullptr, nullptr, PANEL_ONLINE, {} , false, nullptr, 0, 0, L".\\panel.ini", L"ONLINE_UI", 1000, -300 };
 PanelUIState hideButton{ 205, 1, 32, 32, &hide_button, &hide_button_hover, PANEL_HIDE };
 PanelUIState feedButton{ 16, 32, 32, 32, &feed_button, &feed_button_hover, PANEL_FEED };
-PanelUIState killButton{ 85, 32, 32, 32, &kill_button, &kill_button_hover, PANEL_KILL };
+PanelUIState balanceButton{ 85, 32, 32, 32, &balance_button, &balance_button_hover, PANEL_BALANCE };
 PanelUIState onlineButton{ 154, 32, 32, 32, &online_button, &online_button_hover, PANEL_ONLINE };
 PanelUIState buttonBackground{ 0, 200, 250, 140, &toolbar_background, nullptr, PANEL_HIDE };
 
@@ -87,10 +87,10 @@ char ASSASSIN[64] = "Assassin: 0";
 char HUNTER[64] = "Hunter: 0";
 char PAGAN[64] = "Pagan: 0";
 char ORACLE[64] = "Oracle: 0";
-bool isAoLLeading2 = false;
-bool isUoFLeading2 = false;
-int g_lightPercentInt2 = 0;
-int g_furyPercentInt2 = 0;
+bool isAoLLeadingOnline = false;
+bool isUoFLeadingOnline = false;
+int g_lightPercentIntOnline = 0;
+int g_furyPercentIntOnline = 0;
 void updateStatusOnline(const char* val) {
     int total = 0, lightCount = 0, lightPercent = 0, furyCount = 0, furyPercent = 0;
     int fighter = 0, defender = 0, ranger = 0, archer = 0, mage = 0, priest = 0;
@@ -101,8 +101,8 @@ void updateStatusOnline(const char* val) {
         &fighter, &defender, &ranger, &archer, &mage, &priest,
         &warrior, &guardian, &assassin, &hunter, &pagan, &oracle);
     if (matched >= 5 && total > 0) {
-        g_lightPercentInt2 = lightPercent;
-        g_furyPercentInt2 = furyPercent;
+        g_lightPercentIntOnline = lightPercent;
+        g_furyPercentIntOnline = furyPercent;
         snprintf(ON, sizeof(ON), "Total: %d", total);
         snprintf(LI, sizeof(LI), "Light: %d", lightCount);
         snprintf(FU, sizeof(FU), "Fury: %d", furyCount);
@@ -120,8 +120,8 @@ void updateStatusOnline(const char* val) {
         snprintf(HUNTER, sizeof(HUNTER), "Hunter: %d", hunter);
         snprintf(PAGAN, sizeof(PAGAN), "Pagan: %d", pagan);
         snprintf(ORACLE, sizeof(ORACLE), "Oracle: %d", oracle);
-        isAoLLeading2 = (g_lightPercentInt2 >= g_furyPercentInt2);
-        isUoFLeading2 = !isAoLLeading2;
+        isAoLLeadingOnline = (g_lightPercentIntOnline >= g_furyPercentIntOnline);
+        isUoFLeadingOnline = !isAoLLeadingOnline;
     }
     else {
         strcpy(ON, "Total: 0");
@@ -141,10 +141,10 @@ void updateStatusOnline(const char* val) {
         strcpy(HUNTER, "Hunter: 0");
         strcpy(PAGAN, "Pagan: 0");
         strcpy(ORACLE, "Oracle: 0");
-        g_lightPercentInt2 = 0;
-        g_furyPercentInt2 = 0;
-        isAoLLeading2 = false;
-        isUoFLeading2 = false;
+        g_lightPercentIntOnline = 0;
+        g_furyPercentIntOnline = 0;
+        isAoLLeadingOnline = false;
+        isUoFLeadingOnline = false;
     }
 }
 
@@ -217,8 +217,8 @@ inline void renderProgressBar(
     renderProgressBarGeneric(x, y, percent, barTexture, fromRight, maxWidth);
 }
 
-const char* AoLFrames[] = { loadbar_AoL, loadbar_AoL_alt1, loadbar_AoL_alt2, loadbar_AoL_alt3, loadbar_AoL_alt4, loadbar_AoL_alt5};
-const char* UoFFrames[] = { loadbar_UoF, loadbar_UoF_alt1, loadbar_UoF_alt2, loadbar_UoF_alt3, loadbar_UoF_alt4, loadbar_UoF_alt5};
+const char* AoLFrames[] = { loadbar_AoL, loadbar_AoL_alt1, loadbar_AoL_alt2, loadbar_AoL_alt3, loadbar_AoL_alt4, loadbar_AoL_alt5 };
+const char* UoFFrames[] = { loadbar_UoF, loadbar_UoF_alt1, loadbar_UoF_alt2, loadbar_UoF_alt3, loadbar_UoF_alt4, loadbar_UoF_alt5 };
 
 inline const char* SelectKillTexture(const char** frames, unsigned int frameCount) {
     unsigned int tick = GetTickCount();
@@ -339,8 +339,8 @@ inline void renderPercentTextUnified(int x, int y, const char* text,
 
 static void* panelBackgrounds[] = {
     nullptr,                // PANEL_HIDE
-    &globalkill_background, // PANEL_FEED
-    &killfeed_background,   // PANEL_KILL
+    &globalkill_background, // PANEL_GLOBAL
+    &killfeed_background,   // PANEL_BALANCE
     &online_background      // PANEL_ONLINE
 };
 
@@ -357,7 +357,7 @@ inline void renderPanel(PanelType type) {
     PanelUIState* ui = nullptr;
     switch (type) {
     case PANEL_FEED:   ui = &feedUi;   break;
-    case PANEL_KILL:   ui = &killUi;   break;
+    case PANEL_BALANCE:   ui = &balanceUi;   break;
     case PANEL_ONLINE: ui = &onlineUi; break;
     default: return;
     }
@@ -382,9 +382,9 @@ inline void renderPanel(PanelType type) {
         }
     }
 
-    else if (type == PANEL_KILL) {
+    else if (type == PANEL_BALANCE) {
         renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntKill,
-           (void*)GetAoLTextureWithStop(g_lightPercentIntKill),
+            (void*)GetAoLTextureWithStop(g_lightPercentIntKill),
             false, PROGRESS_KILL);
 
         renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntKill,
@@ -401,10 +401,10 @@ inline void renderPanel(PanelType type) {
     }
 
     else if (type == PANEL_ONLINE) {
-        renderProgressBar(panelX + 11, panelY + 32, g_lightPercentInt2,
+        renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntOnline,
             (void*)loadbar_AoL, false, PROGRESS_NORMAL);
 
-        renderProgressBar(panelX + 241, panelY + 32, g_furyPercentInt2,
+        renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntOnline,
             (void*)loadbar_UoF, true, PROGRESS_NORMAL);
 
         TextEntry onlineTexts[] = {
@@ -482,7 +482,7 @@ inline void renderButton(const PanelUIState& btn, int baseX, int baseY) {
 inline void doAllPanels(int baseX, int baseY) {
     switch (g_activePanel) {
     case PANEL_FEED: feedUi.baseX = baseX; feedUi.baseY = baseY; handleMovementExclusive(feedUi); renderPanel(PANEL_FEED); break;
-    case PANEL_KILL: killUi.baseX = baseX; killUi.baseY = baseY; handleMovementExclusive(killUi); renderPanel(PANEL_KILL); break;
+    case PANEL_BALANCE: balanceUi.baseX = baseX; balanceUi.baseY = baseY; handleMovementExclusive(balanceUi); renderPanel(PANEL_BALANCE); break;
     case PANEL_ONLINE: onlineUi.baseX = baseX; onlineUi.baseY = baseY; handleMovementExclusive(onlineUi); renderPanel(PANEL_ONLINE); break;
     default: break;
     }
@@ -494,7 +494,7 @@ inline void doAllPanels(int baseX, int baseY) {
     renderBackground(buttonBackground.background, bx, by);
     renderButton(hideButton, bx, by);
     renderButton(feedButton, bx, by);
-    renderButton(killButton, bx, by);
+    renderButton(balanceButton, bx, by);
     renderButton(onlineButton, bx, by);
 }
 
@@ -527,7 +527,7 @@ __declspec(naked) void naked_0x5F3740() {
 }
 
 void hook::online() {
-    PanelUIState* panels[] = { &onlineUi, &killUi, &feedUi, &buttonUi };
+    PanelUIState* panels[] = { &onlineUi, &balanceUi, &feedUi, &buttonUi };
     for (auto* ui : panels) loadConfig(*ui);
     util::detour((void*)0x47DD4D, naked_0x47DD4D, 7);
     util::detour((void*)0x5F3740, naked_0x5F3740, 5);
