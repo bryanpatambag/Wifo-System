@@ -297,24 +297,18 @@ void shiftFeedTexts(const char* newNotice) {
     feed_texts[0].buffer[sizeof(feed_texts[0].buffer) - 1] = '\0';
 }
 
-auto ONLINE_format = "[ONLINE]";
-auto KILL_format = "[KILL]";
-auto FEED_format = "[FEED]";
-
 auto render_notice = reinterpret_cast<void(__stdcall*)(uintptr_t)>(0x5E5C10);
-
 inline void parseAndHandle(void* espBase) {
     void* arg = *(void**)((BYTE*)espBase + 0x54);
-
-    if (arg == *(void**)KILL_format) {
+    if (arg == *(void**)"[KILL]") {
         updateStatusKill((const char*)((BYTE*)espBase + 0x54 + 6));
         return;
     }
-    if (arg == *(void**)ONLINE_format) {
+    if (arg == *(void**)"[ONLINE]") {
         updateStatusOnline((const char*)((BYTE*)espBase + 0x54 + 8));
         return;
     }
-    if (arg == *(void**)FEED_format) {
+    if (arg == *(void**)"[FEED]") {
         shiftFeedTexts((const char*)((BYTE*)espBase + 0x54 + 6));
         return;
     }
