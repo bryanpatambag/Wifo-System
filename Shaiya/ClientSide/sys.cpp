@@ -15,8 +15,8 @@ enum PanelType {
 };
 
 enum ProgressType {
-    PROGRESS_NORMAL,
-    PROGRESS_KILL
+    PROGRESS_FEED,
+    PROGRESS_BALANCE
 };
 
 struct PanelUIState {
@@ -77,11 +77,10 @@ PanelUIState toogle_feed_button{ 16,32,32,32,&feed_button,&feed_button_hover,PAN
 PanelUIState toogle_balance_button{ 85,32,32,32,&balance_button,&balance_button_hover,PANEL_BALANCE };
 PanelUIState toogle_online_button{ 154,32,32,32,&online_button,&online_button_hover,PANEL_ONLINE };
 PanelUIState background_toolbar{ 200,-300,250,140,&toolbar_background,nullptr};
-
 int g_lightPercentIntOnline = 0;
 int g_furyPercentIntOnline = 0;
-int g_lightPercentIntKill = 0;
-int g_furyPercentIntKill = 0;
+int g_lightPercentIntBalance = 0;
+int g_furyPercentIntBalance = 0;
 
 inline void createDefaultConfig(PanelUIState& ui) {
     if (!ui.configFile || !ui.sectionName) return;
@@ -115,7 +114,6 @@ void updateStatusOnline(const char* val) {
     int total = 0, lightCount = 0, lightPercent = 0, furyCount = 0, furyPercent = 0;
     int fighter = 0, defender = 0, ranger = 0, archer = 0, mage = 0, priest = 0;
     int warrior = 0, guardian = 0, assassin = 0, hunter = 0, pagan = 0, oracle = 0;
-
     int matched = sscanf(val, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
         &total, &lightCount, &lightPercent, &furyCount, &furyPercent,
         &fighter, &defender, &ranger, &archer, &mage, &priest,
@@ -124,27 +122,23 @@ void updateStatusOnline(const char* val) {
     if (matched >= 5 && total > 0) {
         g_lightPercentIntOnline = lightPercent;
         g_furyPercentIntOnline = furyPercent;
-
         snprintf(g_onlineStatus.total.buffer, 128, "Total: %d", total);
         snprintf(g_onlineStatus.light.buffer, 128, "Light: %d", lightCount);
         snprintf(g_onlineStatus.fury.buffer, 128, "Fury: %d", furyCount);
         snprintf(g_onlineStatus.percentLight.buffer, 128, "AoL: %.2f%%%%", (double)lightPercent);
         snprintf(g_onlineStatus.percentFury.buffer, 128, "UoF: %.2f%%%%", (double)furyPercent);
-
         snprintf(g_onlineStatus.fighter.buffer, 128, "Fighter: %d", fighter);
         snprintf(g_onlineStatus.defender.buffer, 128, "Defender: %d", defender);
         snprintf(g_onlineStatus.ranger.buffer, 128, "Ranger: %d", ranger);
         snprintf(g_onlineStatus.archer.buffer, 128, "Archer: %d", archer);
         snprintf(g_onlineStatus.mage.buffer, 128, "Mage: %d", mage);
         snprintf(g_onlineStatus.priest.buffer, 128, "Priest: %d", priest);
-
         snprintf(g_onlineStatus.warrior.buffer, 128, "Warrior: %d", warrior);
         snprintf(g_onlineStatus.guardian.buffer, 128, "Guardian: %d", guardian);
         snprintf(g_onlineStatus.assassin.buffer, 128, "Assassin: %d", assassin);
         snprintf(g_onlineStatus.hunter.buffer, 128, "Hunter: %d", hunter);
         snprintf(g_onlineStatus.pagan.buffer, 128, "Pagan: %d", pagan);
         snprintf(g_onlineStatus.oracle.buffer, 128, "Oracle: %d", oracle);
-
         g_onlineStatus.isAoLLeading = (lightPercent >= furyPercent);
         g_onlineStatus.isUoFLeading = !g_onlineStatus.isAoLLeading;
     }
@@ -166,7 +160,6 @@ void updateStatusOnline(const char* val) {
         strcpy(g_onlineStatus.hunter.buffer, "Hunter: 0");
         strcpy(g_onlineStatus.pagan.buffer, "Pagan: 0");
         strcpy(g_onlineStatus.oracle.buffer, "Oracle: 0");
-
         g_lightPercentIntOnline = 0;
         g_furyPercentIntOnline = 0;
         g_onlineStatus.isAoLLeading = false;
@@ -183,21 +176,18 @@ void updateStatusKill(const char* val) {
         if (lightPercent > 100.0) lightPercent = 100.0;
         if (furyPercent < 0.0) furyPercent = 0.0;
         if (furyPercent > 100.0) furyPercent = 100.0;
-
-        g_lightPercentIntKill = (int)(lightPercent + 0.5);
-        g_furyPercentIntKill = (int)(furyPercent + 0.5);
-
+        g_lightPercentIntBalance = (int)(lightPercent + 0.5);
+        g_furyPercentIntBalance = (int)(furyPercent + 0.5);
         snprintf(g_killStatus.percentLight.buffer, 128, "AoL: %.2f%%%%", lightPercent);
         snprintf(g_killStatus.percentFury.buffer, 128, "UoF: %.2f%%%%", furyPercent);
-
-        g_killStatus.isAoLLeading = (g_lightPercentIntKill >= g_furyPercentIntKill);
+        g_killStatus.isAoLLeading = (g_lightPercentIntBalance >= g_furyPercentIntBalance);
         g_killStatus.isUoFLeading = !g_killStatus.isAoLLeading;
     }
     else {
         strcpy(g_killStatus.percentLight.buffer, "AoL: 0%");
         strcpy(g_killStatus.percentFury.buffer, "UoF: 0%");
-        g_lightPercentIntKill = 0;
-        g_furyPercentIntKill = 0;
+        g_lightPercentIntBalance = 0;
+        g_furyPercentIntBalance = 0;
         g_killStatus.isAoLLeading = false;
         g_killStatus.isUoFLeading = false;
     }
@@ -224,15 +214,14 @@ inline void renderProgressBarGeneric(
     }
 }
 
-inline constexpr int KILL_PROGRESS_WIDTH = 230;
-inline constexpr int PROGRESS_WIDTH = 230;
-
+inline constexpr int BALANCE_PROGRESS_WIDTH = 230;
+inline constexpr int ONINE_PROGRESS_WIDTH = 230;
 inline void renderProgressBar(
     int x, int y, int percent,
     void* barTexture, bool fromRight,
     ProgressType type)
 {
-    int maxWidth = (type == PROGRESS_KILL) ? KILL_PROGRESS_WIDTH : PROGRESS_WIDTH;
+    int maxWidth = (type == PROGRESS_BALANCE) ? BALANCE_PROGRESS_WIDTH : ONINE_PROGRESS_WIDTH;
     renderProgressBarGeneric(x, y, percent, barTexture, fromRight, maxWidth);
 }
 
@@ -259,7 +248,7 @@ int lastAoLPercent = -1, lastUoFPercent = -1;
 const DWORD ANIMATION_DURATION = 5000; // 5 seconds
 const char* GetAoLTextureWithStop(int percent) {
     DWORD now = GetTickCount();
-    if (percent > lastAoLPercent && percent >= g_furyPercentIntKill) {
+    if (percent > lastAoLPercent && percent >= g_furyPercentIntBalance) {
         lastAoLPercent = percent;
         aolStartTick = now;
     }
@@ -274,7 +263,7 @@ const char* GetAoLTextureWithStop(int percent) {
 
 const char* GetUoFTextureWithStop(int percent) {
     DWORD now = GetTickCount();
-    if (percent > lastUoFPercent && percent >= g_lightPercentIntKill) {
+    if (percent > lastUoFPercent && percent >= g_lightPercentIntBalance) {
         lastUoFPercent = percent;
         uofStartTick = now;
     }
@@ -375,29 +364,28 @@ inline void renderPanel(PanelType type) {
         }
     }
     else if (type == PANEL_BALANCE) {
-        renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntKill,
-            (void*)GetAoLTextureWithStop(g_lightPercentIntKill),
-            false, PROGRESS_KILL);
+        renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntBalance,
+            (void*)GetAoLTextureWithStop(g_lightPercentIntBalance),
+            false, PROGRESS_BALANCE);
 
-        renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntKill,
-            (void*)GetUoFTextureWithStop(g_furyPercentIntKill),
-            true, PROGRESS_KILL);
+        renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntBalance,
+            (void*)GetUoFTextureWithStop(g_furyPercentIntBalance),
+            true, PROGRESS_BALANCE);
 
         TextEntry killTexts[] = {
             {36, 32, g_killStatus.percentLight.buffer, 255,255,255,0},
             {150,32, g_killStatus.percentFury.buffer,  255,255,255,0}
         };
         for (auto& t : killTexts) {
-            renderPercentText(panelX + t.offsetX, panelY + t.offsetY,
-                t.text, t.r, t.g, t.b, t.a);
+            renderPercentText(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_ONLINE) {
         renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntOnline,
-            (void*)loadbar_AoL, false, PROGRESS_NORMAL);
+            (void*)loadbar_AoL, false, PROGRESS_FEED);
 
         renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntOnline,
-            (void*)loadbar_UoF, true, PROGRESS_NORMAL);
+            (void*)loadbar_UoF, true, PROGRESS_FEED);
 
         TextEntry onlineTexts[] = {
             {105,52, g_onlineStatus.total.buffer, 0,255,0,0},
@@ -419,8 +407,7 @@ inline void renderPanel(PanelType type) {
             {170,145,g_onlineStatus.oracle.buffer,  255,255,255,0}
         };
         for (auto& t : onlineTexts) {
-            renderPercentText(panelX + t.offsetX, panelY + t.offsetY,
-                t.text, t.r, t.g, t.b, t.a);
+            renderPercentText(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
 }
