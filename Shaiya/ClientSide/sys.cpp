@@ -299,16 +299,16 @@ void shiftFeedTexts(const char* newNotice) {
 
 inline void parseAndHandle(void* espBase) {
     void* arg = *(void**)((BYTE*)espBase + 0x54);
-    if (arg == *(void**)"[KILL]") {
-        updateStatusKill((const char*)((BYTE*)espBase + 0x54 + 6));
+    if (arg == *(void**)"[BALANCE_NOTICE]") {
+        updateStatusKill((const char*)((BYTE*)espBase + 0x54 + 16));
         return;
     }
-    if (arg == *(void**)"[ONLINE]") {
-        updateStatusOnline((const char*)((BYTE*)espBase + 0x54 + 8));
+    if (arg == *(void**)"[ONLINE_NOTICE]") {
+        updateStatusOnline((const char*)((BYTE*)espBase + 0x54 + 15));
         return;
     }
-    if (arg == *(void**)"[FEED]") {
-        shiftFeedTexts((const char*)((BYTE*)espBase + 0x54 + 6));
+    if (arg == *(void**)"[KILL_NOTICE]") {
+        shiftFeedTexts((const char*)((BYTE*)espBase + 0x54 + 13));
         return;
     }
     reinterpret_cast<void(__stdcall*)(uintptr_t)>(0x5E5C10);
