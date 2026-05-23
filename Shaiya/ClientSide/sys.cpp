@@ -15,7 +15,7 @@ enum PanelType {
 };
 
 enum ProgressType {
-    PROGRESS_FEED,
+    PROGRESS_ONLINE,
     PROGRESS_BALANCE
 };
 
@@ -382,10 +382,10 @@ inline void renderPanel(PanelType type) {
     }
     else if (type == PANEL_ONLINE) {
         renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntOnline,
-            (void*)loadbar_AoL, false, PROGRESS_FEED);
+            (void*)loadbar_AoL, false, PROGRESS_ONLINE);
 
         renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntOnline,
-            (void*)loadbar_UoF, true, PROGRESS_FEED);
+            (void*)loadbar_UoF, true, PROGRESS_ONLINE);
 
         TextEntry onlineTexts[] = {
             {105,52, g_onlineStatus.total.buffer, 0,255,0,0},
