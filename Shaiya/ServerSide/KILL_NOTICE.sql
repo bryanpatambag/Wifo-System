@@ -1,12 +1,4 @@
-﻿USE [securetech]
-GO
-/****** Object:  StoredProcedure [dbo].[Kill_Feed]    Script Date: 5/20/2026 9:19:41 AM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
-CREATE PROCEDURE [dbo].[Kill_Feed]
+CREATE PROCEDURE [dbo].[KILL_NOTICE]
     @CharName varchar(120),
     @Text1    varchar(120),
     @MapID    int
@@ -18,7 +10,7 @@ BEGIN
         WHERE MapID = @MapID
     );
 
-    DECLARE @Notice varchar(120) = '[FEED] ' + @CharName + ' killed ' + @Text1 + ' in ' + @MapName;
+    DECLARE @Notice varchar(120) = '[KILL_NOTICE] ' + @CharName + ' killed ' + @Text1 + ' in ' + @MapName;
 
     DECLARE @command varchar(160) = N'/nt ' + @Notice;
 
