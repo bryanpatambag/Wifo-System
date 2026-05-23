@@ -6,6 +6,7 @@
 #include <io.h>
 #include <cstdio>
 #include <vector>
+#include <map>
 
 enum PanelType {
     PANEL_HIDE,
@@ -33,8 +34,8 @@ struct PanelUIState {
     int defaultOffsetX = 0, defaultOffsetY = 0;
 };
 
-struct StatusText {
-    char buffer[128];
+struct StatusText { 
+    char buffer[128]; 
 };
 
 struct OnlineStatus {
@@ -68,20 +69,19 @@ OnlineStatus g_onlineStatus;
 KillStatus g_killStatus;
 PanelType g_activePanel = PANEL_HIDE;
 PanelUIState* g_activeDraggingPanel = nullptr;
-PanelUIState background_toolbar{ 200, -300, 250, 140, &toolbar_background, nullptr };
 
 std::map<PanelType, PanelUIState> panels = {
-    { PANEL_HIDE,    {200, -300, 250, 140, nullptr, nullptr, PANEL_HIDE, {}, false, nullptr, 0, 0, L".\\panel.ini", L"BUTTON_NOTICE_UI", 200, -300 } },
-    { PANEL_FEED,    {199, -227, 250, 140, nullptr, nullptr, PANEL_FEED, {}, false, nullptr, 0, 0, L".\\panel.ini", L"KILL_NOTICE_UI", 199, -227 } },
-    { PANEL_BALANCE, {199, -227, 250, 140, nullptr, nullptr, PANEL_BALANCE, {}, false, nullptr, 0, 0, L".\\panel.ini", L"BALANCE_NOTICE_UI", 199, -227 } },
-    { PANEL_ONLINE,  {199, -227, 250, 140, nullptr, nullptr, PANEL_ONLINE, {}, false, nullptr, 0, 0, L".\\panel.ini", L"ONLINE_NOTICE_UI", 199, -227 } }
+    { PANEL_HIDE,    {200,-300,250,140,&toolbar_background,nullptr,PANEL_HIDE,{},false,nullptr,0,0,L".\\panel.ini",L"BUTTON_NOTICE_UI",200,-300 } },
+    { PANEL_FEED,    {199,-227,250,140,&killfeed_background,nullptr,PANEL_FEED,{},false,nullptr,0,0,L".\\panel.ini",L"KILL_NOTICE_UI",199,-227 } },
+    { PANEL_BALANCE, {199,-227,250,140,&globalkill_background,nullptr,PANEL_BALANCE,{},false,nullptr,0,0,L".\\panel.ini",L"BALANCE_NOTICE_UI",199,-227 } },
+    { PANEL_ONLINE,  {199,-227,250,140,&online_background,nullptr,PANEL_ONLINE,{},false,nullptr,0,0,L".\\panel.ini",L"ONLINE_NOTICE_UI",199,-227 } }
 };
 
 std::map<PanelType, PanelUIState> toggleButtons = {
-    { PANEL_HIDE,    {205, 1, 32, 32, &hide_button,    &hide_button_hover,    PANEL_HIDE } },
-    { PANEL_FEED,    {16, 32, 32, 32, &feed_button,    &feed_button_hover,    PANEL_FEED } },
-    { PANEL_BALANCE, {85, 32, 32, 32, &balance_button, &balance_button_hover, PANEL_BALANCE } },
-    { PANEL_ONLINE,  {154,32, 32, 32, &online_button,  &online_button_hover,  PANEL_ONLINE } }
+    { PANEL_HIDE,    {205,1,32,32,&hide_button,&hide_button_hover,PANEL_HIDE } },
+    { PANEL_FEED,    {16,32,32,32,&feed_button,&feed_button_hover,PANEL_FEED } },
+    { PANEL_BALANCE, {85,32,32,32,&balance_button,&balance_button_hover,PANEL_BALANCE } },
+    { PANEL_ONLINE,  {154,32,32,32,&online_button,&online_button_hover,PANEL_ONLINE } }
 };
 
 int g_lightPercentIntOnline = 0;
@@ -100,9 +100,7 @@ inline void createDefaultConfig(PanelUIState& ui) {
 
 inline void loadConfig(PanelUIState& ui) {
     if (!ui.configFile || !ui.sectionName) return;
-    if (_access((const char*)ui.configFile, 0) != 0) {
-        createDefaultConfig(ui);
-    }
+    if (_waccess(ui.configFile, 0) != 0) { createDefaultConfig(ui); }
     ui.offsetX = GetPrivateProfileIntW(ui.sectionName, L"OffsetX", ui.defaultOffsetX, ui.configFile);
     ui.offsetY = GetPrivateProfileIntW(ui.sectionName, L"OffsetY", ui.defaultOffsetY, ui.configFile);
     ui.gameHwnd = FindWindowW(L"GAME", nullptr);
@@ -125,15 +123,14 @@ void updateStatusOnline(const char* val) {
         &total, &lightCount, &lightPercent, &furyCount, &furyPercent,
         &fighter, &defender, &ranger, &archer, &mage, &priest,
         &warrior, &guardian, &assassin, &hunter, &pagan, &oracle);
-
     if (matched >= 5 && total > 0) {
         g_lightPercentIntOnline = lightPercent;
         g_furyPercentIntOnline = furyPercent;
         snprintf(g_onlineStatus.total.buffer, 128, "Total: %d", total);
         snprintf(g_onlineStatus.light.buffer, 128, "Light: %d", lightCount);
         snprintf(g_onlineStatus.fury.buffer, 128, "Fury: %d", furyCount);
-        snprintf(g_onlineStatus.percentLight.buffer, 128, "AoL: %.2f%%%%", (double)lightPercent);
-        snprintf(g_onlineStatus.percentFury.buffer, 128, "UoF: %.2f%%%%", (double)furyPercent);
+        snprintf(g_onlineStatus.percentLight.buffer, 128, "AoL: %.2f%%", (double)lightPercent);
+        snprintf(g_onlineStatus.percentFury.buffer, 128, "UoF: %.2f%%", (double)furyPercent);
         snprintf(g_onlineStatus.fighter.buffer, 128, "Fighter: %d", fighter);
         snprintf(g_onlineStatus.defender.buffer, 128, "Defender: %d", defender);
         snprintf(g_onlineStatus.ranger.buffer, 128, "Ranger: %d", ranger);
@@ -149,35 +146,11 @@ void updateStatusOnline(const char* val) {
         g_onlineStatus.isAoLLeading = (lightPercent >= furyPercent);
         g_onlineStatus.isUoFLeading = !g_onlineStatus.isAoLLeading;
     }
-    else {
-        strcpy(g_onlineStatus.total.buffer, "Total: 0");
-        strcpy(g_onlineStatus.light.buffer, "Light: 0");
-        strcpy(g_onlineStatus.fury.buffer, "Fury: 0");
-        strcpy(g_onlineStatus.percentLight.buffer, "AoL: 0.00%");
-        strcpy(g_onlineStatus.percentFury.buffer, "UoF: 0.00%");
-        strcpy(g_onlineStatus.fighter.buffer, "Fighter: 0");
-        strcpy(g_onlineStatus.defender.buffer, "Defender: 0");
-        strcpy(g_onlineStatus.ranger.buffer, "Ranger: 0");
-        strcpy(g_onlineStatus.archer.buffer, "Archer: 0");
-        strcpy(g_onlineStatus.mage.buffer, "Mage: 0");
-        strcpy(g_onlineStatus.priest.buffer, "Priest: 0");
-        strcpy(g_onlineStatus.warrior.buffer, "Warrior: 0");
-        strcpy(g_onlineStatus.guardian.buffer, "Guardian: 0");
-        strcpy(g_onlineStatus.assassin.buffer, "Assassin: 0");
-        strcpy(g_onlineStatus.hunter.buffer, "Hunter: 0");
-        strcpy(g_onlineStatus.pagan.buffer, "Pagan: 0");
-        strcpy(g_onlineStatus.oracle.buffer, "Oracle: 0");
-        g_lightPercentIntOnline = 0;
-        g_furyPercentIntOnline = 0;
-        g_onlineStatus.isAoLLeading = false;
-        g_onlineStatus.isUoFLeading = false;
-    }
 }
 
 void updateStatusKill(const char* val) {
     double lightPercent = 0.0, furyPercent = 0.0;
     int matched = sscanf(val, "%lf %lf", &lightPercent, &furyPercent);
-
     if (matched == 2) {
         if (lightPercent < 0.0) lightPercent = 0.0;
         if (lightPercent > 100.0) lightPercent = 100.0;
@@ -185,8 +158,8 @@ void updateStatusKill(const char* val) {
         if (furyPercent > 100.0) furyPercent = 100.0;
         g_lightPercentIntBalance = (int)(lightPercent + 0.5);
         g_furyPercentIntBalance = (int)(furyPercent + 0.5);
-        snprintf(g_killStatus.percentLight.buffer, 128, "AoL: %.2f%%%%", lightPercent);
-        snprintf(g_killStatus.percentFury.buffer, 128, "UoF: %.2f%%%%", furyPercent);
+        snprintf(g_killStatus.percentLight.buffer, 128, "AoL: %.2f%%", lightPercent);
+        snprintf(g_killStatus.percentFury.buffer, 128, "UoF: %.2f%%", furyPercent);
         g_killStatus.isAoLLeading = (g_lightPercentIntBalance >= g_furyPercentIntBalance);
         g_killStatus.isUoFLeading = !g_killStatus.isAoLLeading;
     }
@@ -198,87 +171,6 @@ void updateStatusKill(const char* val) {
         g_killStatus.isAoLLeading = false;
         g_killStatus.isUoFLeading = false;
     }
-}
-
-inline void renderProgressBarGeneric(
-    int x, int y, int percent,
-    void* barTexture, bool fromRight,
-    int maxWidth){
-    if (percent < 0) percent = 0;
-    if (percent > 100) percent = 100;
-    int width = (percent * maxWidth) / 100;
-    for (int i = 0; i < width; i++) {
-        int drawX = fromRight ? (x - i) : (x + i);
-        int drawY = y;
-        __asm {
-            push drawY
-            push drawX
-            mov ecx, barTexture
-            call render_tga
-        }
-    }
-}
-
-inline constexpr int BALANCE_PROGRESS_WIDTH = 230;
-inline constexpr int ONLINE_PROGRESS_WIDTH = 230;
-inline void renderProgressBar(
-    int x, int y, int percent,
-    void* barTexture, bool fromRight,
-    ProgressType type)
-{
-    int maxWidth = (type == PROGRESS_BALANCE) ? BALANCE_PROGRESS_WIDTH : ONLINE_PROGRESS_WIDTH;
-    renderProgressBarGeneric(x, y, percent, barTexture, fromRight, maxWidth);
-}
-
-const char* AoLFrames[] = { loadbar_AoL, loadbar_AoL_alt1, loadbar_AoL_alt2, loadbar_AoL_alt3, loadbar_AoL_alt4, loadbar_AoL_alt5 };
-const char* UoFFrames[] = { loadbar_UoF, loadbar_UoF_alt1, loadbar_UoF_alt2, loadbar_UoF_alt3, loadbar_UoF_alt4, loadbar_UoF_alt5 };
-
-inline const char* SelectKillTexture(const char** frames, unsigned int frameCount) {
-    unsigned int tick = GetTickCount();
-    unsigned int speed = 120; // frame change speed in ms
-    unsigned int cycle = (tick / speed) % (frameCount * 2 - 2);
-    unsigned int frameIndex;
-
-    if (cycle < frameCount) {
-        frameIndex = cycle;
-    }
-    else {
-        frameIndex = (frameCount * 2 - 2) - cycle;
-    }
-    return frames[frameIndex];
-}
-
-DWORD aolStartTick = 0, uofStartTick = 0;
-int lastAoLPercent = -1, lastUoFPercent = -1;
-const DWORD ANIMATION_DURATION = 5000; // 5 seconds
-const char* GetAoLTextureWithStop(int percent) {
-    DWORD now = GetTickCount();
-    if (percent > lastAoLPercent && percent >= g_furyPercentIntBalance) {
-        lastAoLPercent = percent;
-        aolStartTick = now;
-    }
-    else {
-        lastAoLPercent = percent;
-    }
-    if (percent > 0 && (now - aolStartTick) < ANIMATION_DURATION) {
-        return SelectKillTexture(AoLFrames, sizeof(AoLFrames) / sizeof(AoLFrames[0]));
-    }
-    return (const char*)loadbar_AoL;
-}
-
-const char* GetUoFTextureWithStop(int percent) {
-    DWORD now = GetTickCount();
-    if (percent > lastUoFPercent && percent >= g_lightPercentIntBalance) {
-        lastUoFPercent = percent;
-        uofStartTick = now;
-    }
-    else {
-        lastUoFPercent = percent;
-    }
-    if (percent > 0 && (now - uofStartTick) < ANIMATION_DURATION) {
-        return SelectKillTexture(UoFFrames, sizeof(UoFFrames) / sizeof(UoFFrames[0]));
-    }
-    return (const char*)loadbar_UoF;
 }
 
 void shiftFeedTexts(const char* newNotice) {
@@ -307,9 +199,23 @@ inline void parseAndHandle(void* espBase) {
     reinterpret_cast<void(__stdcall*)(uintptr_t)>(0x5E5C10);
 }
 
-inline void renderPercentText(int x, int y, const char* text,
-    int r, int g, int b, int a)
-{
+inline void renderProgressBarGeneric(int x, int y, int percent, void* barTexture, bool fromRight, int maxWidth) {
+    if (percent < 0) percent = 0;
+    if (percent > 100) percent = 100;
+    int width = (percent * maxWidth) / 100;
+    for (int i = 0; i < width; i++) {
+        int drawX = fromRight ? (x - i) : (x + i);
+        int drawY = y;
+        __asm {
+            push drawY
+            push drawX
+            mov ecx, barTexture
+            call render_tga
+        }
+    }
+}
+
+inline void renderPercentText(int x, int y, const char* text, int r, int g, int b, int a) {
     __asm { push text }
     __asm { push a }
     __asm { push r }
@@ -334,10 +240,10 @@ inline void renderBackground(void* background, int x, int y) {
 }
 
 static void* panelBackgrounds[] = {
-    nullptr,
-    &globalkill_background,
-    &killfeed_background,
-    &online_background
+    nullptr, 
+    &globalkill_background, 
+    &killfeed_background, 
+    &online_background 
 };
 
 inline void renderPanel(PanelType type) {
@@ -346,63 +252,51 @@ inline void renderPanel(PanelType type) {
     PanelUIState& ui = it->second;
     int panelX = ui.baseX + ui.offsetX;
     int panelY = ui.baseY + ui.offsetY;
-    if (panelBackgrounds[type]) {
-        renderBackground(panelBackgrounds[type], panelX, panelY);
-    }
+    if (panelBackgrounds[type]) renderBackground(panelBackgrounds[type], panelX, panelY);
     if (type == PANEL_FEED) {
         TextEntry feedTexts[] = {
-            {20,  32, feed_texts[0].buffer, 255,255,255,0},
-            {20,  52, feed_texts[1].buffer, 255,255,255,0},
-            {20,  72, feed_texts[2].buffer, 255,255,255,0},
-            {20,  92, feed_texts[3].buffer, 255,255,255,0},
-            {20, 112, feed_texts[4].buffer, 255,255,255,0}
+            {20,32,feed_texts[0].buffer,255,255,255,0},
+            {20,52,feed_texts[1].buffer,255,255,255,0},
+            {20,72,feed_texts[2].buffer,255,255,255,0},
+            {20,92,feed_texts[3].buffer,255,255,255,0},
+            {20,112,feed_texts[4].buffer,255,255,255,0}
         };
         for (auto& t : feedTexts) {
             renderPercentText(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_BALANCE) {
-        renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntBalance,
-            (void*)GetAoLTextureWithStop(g_lightPercentIntBalance),
-            false, PROGRESS_BALANCE);
-
-        renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntBalance,
-            (void*)GetUoFTextureWithStop(g_furyPercentIntBalance),
-            true, PROGRESS_BALANCE);
-
+        renderProgressBarGeneric(panelX + 11, panelY + 32, g_lightPercentIntBalance, (void*)loadbar_AoL, false, 230);
+        renderProgressBarGeneric(panelX + 241, panelY + 32, g_furyPercentIntBalance, (void*)loadbar_UoF, true, 230);
         TextEntry killTexts[] = {
-            {36, 32, g_killStatus.percentLight.buffer, 255,255,255,0},
-            {150,32, g_killStatus.percentFury.buffer,  255,255,255,0}
+            {36,32,g_killStatus.percentLight.buffer,255,255,255,0},
+            {150,32,g_killStatus.percentFury.buffer,255,255,255,0}
         };
         for (auto& t : killTexts) {
             renderPercentText(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_ONLINE) {
-        renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntOnline,
-            (void*)loadbar_AoL, false, PROGRESS_ONLINE);
-
-        renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntOnline,
-            (void*)loadbar_UoF, true, PROGRESS_ONLINE);
-
+        renderProgressBarGeneric(panelX + 11, panelY + 32, g_lightPercentIntOnline, (void*)loadbar_AoL, false, 230);
+        renderProgressBarGeneric(panelX + 241, panelY + 32, g_furyPercentIntOnline, (void*)loadbar_UoF, true, 230);
         TextEntry onlineTexts[] = {
-            {105,52, g_onlineStatus.total.buffer, 0,255,0,0},
-            {10, 52, g_onlineStatus.light.buffer, 0,255,0,0},
-            {205,52, g_onlineStatus.fury.buffer, 0,255,0,0},
-            {16, 32, g_onlineStatus.percentLight.buffer, 255,255,255,0},
-            {170,32, g_onlineStatus.percentFury.buffer,  255,255,255,0},
-            {16, 70, g_onlineStatus.fighter.buffer, 255,255,255,0},
-            {16, 85, g_onlineStatus.defender.buffer,255,255,255,0},
-            {16,100, g_onlineStatus.ranger.buffer,  255,255,255,0},
-            {16,115, g_onlineStatus.archer.buffer,  255,255,255,0},
-            {16,130, g_onlineStatus.mage.buffer,    255,255,255,0},
-            {16,145, g_onlineStatus.priest.buffer,  255,255,255,0},
-            {170,70, g_onlineStatus.warrior.buffer, 255,255,255,0},
-            {170,85, g_onlineStatus.guardian.buffer,255,255,255,0},
+            {105,52,g_onlineStatus.total.buffer,0,255,0,0},
+            {10,52,g_onlineStatus.light.buffer,0,255,0,0},
+            {205,52,g_onlineStatus.fury.buffer,0,255,0,0},
+            {16,32,g_onlineStatus.percentLight.buffer,255,255,255,0},
+            {170,32,g_onlineStatus.percentFury.buffer,255,255,255,0},
+            {16,70,g_onlineStatus.fighter.buffer,255,255,255,0},
+            {16,85,g_onlineStatus.defender.buffer,255,255,255,0},
+            {16,100,g_onlineStatus.ranger.buffer,255,255,255,0},
+            {16,115,g_onlineStatus.archer.buffer,255,255,255,0},
+            {16,130,g_onlineStatus.mage.buffer,255,255,255,0},
+            {16,145,g_onlineStatus.priest.buffer,255,255,255,0},
+            {170,70,g_onlineStatus.warrior.buffer,255,255,255,0},
+            {170,85,g_onlineStatus.guardian.buffer,255,255,255,0},
             {170,100,g_onlineStatus.assassin.buffer,255,255,255,0},
-            {170,115,g_onlineStatus.hunter.buffer,  255,255,255,0},
-            {170,130,g_onlineStatus.pagan.buffer,   255,255,255,0},
-            {170,145,g_onlineStatus.oracle.buffer,  255,255,255,0}
+            {170,115,g_onlineStatus.hunter.buffer,255,255,255,0},
+            {170,130,g_onlineStatus.pagan.buffer,255,255,255,0},
+            {170,145,g_onlineStatus.oracle.buffer,255,255,255,0}
         };
         for (auto& t : onlineTexts) {
             renderPercentText(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
@@ -441,14 +335,12 @@ inline void handleMovementExclusive(PanelUIState& ui) {
     }
 }
 
-inline void renderButton(const PanelUIState& btn, int baseX, int baseY) {
+inline void renderButton(PanelUIState& btn, int baseX, int baseY) {
     int bx = baseX + btn.offsetX;
     int by = baseY + btn.offsetY;
     POINT curPos;
     GetCursorPos(&curPos);
-    if (btn.gameHwnd) {
-        ScreenToClient(btn.gameHwnd, &curPos);
-    }
+    if (btn.gameHwnd) ScreenToClient(btn.gameHwnd, &curPos);
     bool isHover = (curPos.x >= bx && curPos.x <= bx + btn.width && curPos.y >= by && curPos.y <= by + btn.height);
     void* tex = (isHover && btn.hoverBackground) ? btn.hoverBackground : btn.background;
     renderBackground(tex, bx, by);
@@ -466,14 +358,15 @@ inline void doAllPanels(int baseX, int baseY) {
     if (g_activePanel != PANEL_HIDE) {
         renderPanel(g_activePanel);
     }
-    background_toolbar.baseX = baseX;
-    background_toolbar.baseY = baseY;
-    handleMovementExclusive(background_toolbar);
-    int bx = background_toolbar.baseX + background_toolbar.offsetX;
-    int by = background_toolbar.baseY + background_toolbar.offsetY;
-    renderBackground(background_toolbar.background, bx, by);
-    for (auto& [type, btn] : toggleButtons) {
-    renderButton(btn, bx, by);
+    auto it = panels.find(PANEL_HIDE);
+    if (it != panels.end()) {
+        PanelUIState& toolbar = it->second;
+        int bx = toolbar.baseX + toolbar.offsetX;
+        int by = toolbar.baseY + toolbar.offsetY;
+        renderBackground(toolbar.background, bx, by);
+        for (auto& [type, btn] : toggleButtons) {
+            renderButton(btn, bx, by);
+        }
     }
 }
 
@@ -506,7 +399,7 @@ __declspec(naked) void naked_0x5F3740() {
 }
 
 void hook::online() {
-    for (auto& [type, ui] : panels) {loadConfig(ui);}loadConfig(background_toolbar);
+    for (auto& [type, ui] : panels) {loadConfig(ui);}
     util::detour((void*)0x47DD4D, naked_0x47DD4D, 7);
     util::detour((void*)0x5F3740, naked_0x5F3740, 5);
 }
