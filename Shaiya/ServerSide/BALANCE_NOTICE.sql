@@ -1,11 +1,4 @@
-﻿USE [securetech]
-GO
-/****** Object:  StoredProcedure [dbo].[Kill_Status]    Script Date: 5/20/2026 9:19:24 AM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE PROCEDURE [dbo].[Kill_Status]
+﻿CREATE PROCEDURE [dbo].[BALANCE_NOTICE]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -35,7 +28,7 @@ BEGIN
         SET @lightPercent = CAST(@lightKills * 100.0 / (@lightKills + @furyKills) AS DECIMAL(5,2));
         SET @furyPercent  = CAST(@furyKills * 100.0 / (@lightKills + @furyKills) AS DECIMAL(5,2));
 
-        SET @command = '/nt [KILL] '
+        SET @command = '/nt [BALANCE_NOTICE] '
                      + CAST(@lightPercent AS NVARCHAR(10)) + ' '
                      + CAST(@furyPercent AS NVARCHAR(10));
 
