@@ -219,27 +219,30 @@ inline void renderProgressBarGeneric(int x, int y, int percent, void* barTexture
     }
 }
 
-inline void renderPercentText(int x, int y, const char* text, int r, int g, int b, int a) {
-    __asm { push text }
-    __asm { push a }
-    __asm { push r }
-    __asm { push g }
-    __asm { push b }
-    __asm {
-        push y
-        push x
-        push 0x22B69B0
-        call render_text_with_stroke
-        add esp, 32
+inline void renderElement(void* background, int x, int y,
+    const char* text = nullptr,
+    int r = 255, int g = 255, int b = 255, int a = 0) {
+    if (background) {
+        __asm {
+            push y
+            push x
+            mov ecx, background
+            call render_tga
+        }
     }
-}
-
-inline void renderBackground(void* background, int x, int y) {
-    __asm {
-        push y
-        push x
-        mov ecx, background
-        call render_tga
+    if (text) {
+        __asm { push text }
+        __asm { push a }
+        __asm { push r }
+        __asm { push g }
+        __asm { push b }
+        __asm {
+            push y
+            push x
+            push 0x22B69B0
+            call render_text_with_stroke
+            add esp, 32
+        }
     }
 }
 
@@ -249,9 +252,7 @@ inline void renderPanel(PanelType type) {
     PanelUIState& ui = it->second;
     int panelX = ui.baseX + ui.offsetX;
     int panelY = ui.baseY + ui.offsetY;
-    if (ui.background) {
-        renderBackground(ui.background, panelX, panelY);
-    }
+    renderElement(ui.background, panelX, panelY);
     if (type == PANEL_FEED) {
         TextEntry feedTexts[] = {
             {20,32,feed_texts[0].buffer,255,255,255,0},
@@ -261,7 +262,7 @@ inline void renderPanel(PanelType type) {
             {20,112,feed_texts[4].buffer,255,255,255,0}
         };
         for (auto& t : feedTexts) {
-            renderPercentText(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
+            renderElement(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_BALANCE) {
@@ -272,7 +273,7 @@ inline void renderPanel(PanelType type) {
             {150,32,g_killStatus.percentFury.buffer,255,255,255,0}
         };
         for (auto& t : killTexts) {
-            renderPercentText(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
+            renderElement(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_ONLINE) {
@@ -298,7 +299,7 @@ inline void renderPanel(PanelType type) {
             {170,145,g_onlineStatus.oracle.buffer,255,255,255,0}
         };
         for (auto& t : onlineTexts) {
-            renderPercentText(panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
+            renderElement(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
 }
@@ -313,6 +314,7 @@ inline void handleMovementExclusive(PanelUIState& ui) {
         if (g_activeDraggingPanel && g_activeDraggingPanel != &ui) return;
         if (curPos.x >= panelX && curPos.x <= panelX + ui.width &&
             curPos.y >= panelY && curPos.y <= panelY + ui.height) {
+
             if (!ui.dragging) {
                 ui.dragging = true;
                 g_activeDraggingPanel = &ui;
@@ -342,7 +344,7 @@ inline void renderButton(PanelUIState& btn, int baseX, int baseY) {
     if (btn.gameHwnd) ScreenToClient(btn.gameHwnd, &curPos);
     bool isHover = (curPos.x >= bx && curPos.x <= bx + btn.width && curPos.y >= by && curPos.y <= by + btn.height);
     void* tex = (isHover && btn.hoverBackground) ? btn.hoverBackground : btn.background;
-    renderBackground(tex, bx, by);
+    renderElement(tex, bx, by);
     if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {
         g_activePanel = btn.targetPanel;
     }
@@ -362,7 +364,7 @@ inline void doAllPanels(int baseX, int baseY) {
         PanelUIState& toolbar = it->second;
         int bx = toolbar.baseX + toolbar.offsetX;
         int by = toolbar.baseY + toolbar.offsetY;
-        renderBackground(toolbar.background, bx, by);
+        renderElement(toolbar.background, bx, by);
         for (auto& [type, btn] : toggleButtons) {
             renderButton(btn, bx, by);
         }
