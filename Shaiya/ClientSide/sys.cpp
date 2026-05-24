@@ -182,7 +182,7 @@ void shiftFeedTexts(const char* newNotice) {
     feed_texts[0].buffer[sizeof(feed_texts[0].buffer) - 1] = '\0';
 }
 
-inline void parseAndHandle(void* espBase) {
+inline void handle(void* espBase) {
     const int baseOffset = 84;
     void* arg = *(void**)((BYTE*)espBase + baseOffset);
     const char* kill = "[KILL_NOTICE]";
@@ -314,7 +314,6 @@ inline void handleMovementExclusive(PanelUIState& ui) {
         if (g_activeDraggingPanel && g_activeDraggingPanel != &ui) return;
         if (curPos.x >= panelX && curPos.x <= panelX + ui.width &&
             curPos.y >= panelY && curPos.y <= panelY + ui.height) {
-
             if (!ui.dragging) {
                 ui.dragging = true;
                 g_activeDraggingPanel = &ui;
@@ -336,21 +335,7 @@ inline void handleMovementExclusive(PanelUIState& ui) {
     }
 }
 
-inline void renderButton(PanelUIState& btn, int baseX, int baseY) {
-    int bx = baseX + btn.offsetX;
-    int by = baseY + btn.offsetY;
-    POINT curPos;
-    GetCursorPos(&curPos);
-    if (btn.gameHwnd) ScreenToClient(btn.gameHwnd, &curPos);
-    bool isHover = (curPos.x >= bx && curPos.x <= bx + btn.width && curPos.y >= by && curPos.y <= by + btn.height);
-    void* tex = (isHover && btn.hoverBackground) ? btn.hoverBackground : btn.background;
-    renderElement(tex, bx, by);
-    if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {
-        g_activePanel = btn.targetPanel;
-    }
-}
-
-inline void doAllPanels(int baseX, int baseY) {
+inline void render_panels(int baseX, int baseY) {
     for (auto& [type, ui] : panels) {
         ui.baseX = baseX;
         ui.baseY = baseY;
@@ -365,8 +350,20 @@ inline void doAllPanels(int baseX, int baseY) {
         int bx = toolbar.baseX + toolbar.offsetX;
         int by = toolbar.baseY + toolbar.offsetY;
         renderElement(toolbar.background, bx, by);
+
         for (auto& [type, btn] : toggleButtons) {
-            renderButton(btn, bx, by);
+            int btnX = bx + btn.offsetX;
+            int btnY = by + btn.offsetY;
+            POINT curPos;
+            GetCursorPos(&curPos);
+            if (btn.gameHwnd) ScreenToClient(btn.gameHwnd, &curPos);
+            bool isHover = (curPos.x >= btnX && curPos.x <= btnX + btn.width &&
+                curPos.y >= btnY && curPos.y <= btnY + btn.height);
+            void* tex = (isHover && btn.hoverBackground) ? btn.hoverBackground : btn.background;
+            renderElement(tex, btnX, btnY);
+            if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {
+                g_activePanel = btn.targetPanel;
+            }
         }
     }
 }
@@ -379,7 +376,7 @@ __declspec(naked) void naked_0x47DD4D() {
         pushad
         push ecx
         push eax
-        call doAllPanels
+        call render_panels
         add esp, 8
         popad
         movzx eax, byte ptr[ebx + 0x3CC]
@@ -392,7 +389,7 @@ __declspec(naked) void naked_0x5F3740() {
         pushad
         mov eax, esp
         push eax
-        call parseAndHandle
+        call handle
         add esp, 4
         popad
         ret
