@@ -334,7 +334,15 @@ inline void MouseMovement(PanelUIState& ui) {
     }
 }
 
-inline void doall(int baseX, int baseY) {
+inline void doall() {
+    int baseX = 0;
+    int baseY = 0;
+    __asm {
+        mov eax, [ebx + 4]
+        mov ecx, [ebx + 8]
+        mov baseX, eax
+        mov baseY, ecx
+    }
     for (auto& [type, ui] : panels) {
         ui.baseX = baseX;
         ui.baseY = baseY;
@@ -355,13 +363,10 @@ inline void doall(int baseX, int baseY) {
             POINT curPos;
             GetCursorPos(&curPos);
             if (btn.gameHwnd) ScreenToClient(btn.gameHwnd, &curPos);
-            bool isHover = (curPos.x >= btnX && curPos.x <= btnX + btn.width &&
-                curPos.y >= btnY && curPos.y <= btnY + btn.height);
+            bool isHover = (curPos.x >= btnX && curPos.x <= btnX + btn.width && curPos.y >= btnY && curPos.y <= btnY + btn.height);
             void* tex = (isHover && btn.hoverBackground) ? btn.hoverBackground : btn.background;
             renderElement(tex, btnX, btnY);
-            if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {
-                g_activePanel = btn.targetPanel;
-            }
+            if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {g_activePanel = btn.targetPanel;}
         }
     }
 }
@@ -369,13 +374,8 @@ inline void doall(int baseX, int baseY) {
 auto u0x47DD54 = 0x47DD54;
 __declspec(naked) void naked_0x47DD4D() {
     __asm {
-        mov eax, [ebx + 4]
-        mov ecx, [ebx + 8]
         pushad
-        push ecx
-        push eax
         call doall
-        add esp, 8
         popad
         movzx eax, byte ptr[ebx + 0x3CC]
         jmp u0x47DD54
@@ -395,7 +395,7 @@ __declspec(naked) void naked_0x5F3740() {
 }
 
 void hook::online() {
-    for (auto& [type, ui] : panels) {loadConfig(ui);}
+    for (auto& [type, ui] : panels) { loadConfig(ui); }
     util::detour((void*)0x47DD4D, naked_0x47DD4D, 7);
     util::detour((void*)0x5F3740, naked_0x5F3740, 5);
 }
