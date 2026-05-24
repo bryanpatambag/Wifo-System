@@ -1,9 +1,12 @@
 #pragma once
 
-static const unsigned render_address_tga = 0x57B860;
-RenderFunc render_tga = reinterpret_cast<RenderFunc>(render_address_tga);
+static const unsigned DrawObjectTextureAddr = 0x57B860;
+RenderFunc DrawObjectTexture = reinterpret_cast<RenderFunc>(DrawObjectTextureAddr);
 using RenderFunc = void(__cdecl*)(const char*);
-extern RenderFunc render_tga;
+extern RenderFunc DrawObjectTexture;
+
+extern unsigned DrawTextStroke;
+unsigned DrawTextStroke = 0x573AC0;
 
 extern char feed_button[16];
 extern char hide_button[16];
