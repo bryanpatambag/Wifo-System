@@ -240,7 +240,7 @@ inline void renderBackground(void* background, int x, int y) {
 }
 
 static void* panelBackgrounds[] = {
-    nullptr, 
+    &toolbar_background, 
     &globalkill_background, 
     &killfeed_background, 
     &online_background 
