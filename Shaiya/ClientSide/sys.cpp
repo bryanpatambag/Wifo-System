@@ -365,16 +365,17 @@ inline void doall(void* ebxPtr) {
     }
 }
 
-auto u0x47DD54 = 0x47DD54;
-__declspec(naked) void naked_0x47DD4D() {
+auto fn0x551B40 = 0x551B40;
+auto u0x47DD8F = 0x47DD8F;
+__declspec(naked) void naked_0x47DD8A() {
     __asm {
         pushad
         push ebx
         call doall
         add esp, 4
         popad
-        movzx eax, byte ptr[ebx + 0x3CC]
-        jmp u0x47DD54
+        call fn0x551B40
+        jmp u0x47DD8F
     }
 }
 
@@ -392,6 +393,6 @@ __declspec(naked) void naked_0x5F3740() {
 
 void hook::online() {
     for (auto& [type, ui] : panels) { loadConfig(ui); }
-    util::detour((void*)0x47DD4D, naked_0x47DD4D, 7);
+    util::detour((void*)0x47DD8A, naked_0x47DD8A, 5);
     util::detour((void*)0x5F3740, naked_0x5F3740, 5);
 }
