@@ -1,12 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <util/util.h>
 #include "include/main.h"
-#include "include/sys.h"
 #include <windows.h>
 #include <io.h>
 #include <cstdio>
 #include <vector>
 #include <map>
+#include <cstring>
 
 enum PanelType {
     PANEL_HIDE,
@@ -21,7 +21,8 @@ enum ProgressType {
 };
 
 struct PanelUIState {
-    int offsetX, offsetY, width, height;
+    int offsetX, offsetY;
+    int width, height;
     void* background = nullptr;
     void* hoverBackground = nullptr;
     PanelType targetPanel = PANEL_HIDE;
@@ -31,11 +32,10 @@ struct PanelUIState {
     int baseX = 0, baseY = 0;
     const wchar_t* configFile = nullptr;
     const wchar_t* sectionName = nullptr;
-    int defaultOffsetX = 0, defaultOffsetY = 0;
 };
 
-struct StatusText { 
-    char buffer[128]; 
+struct StatusText {
+    char buffer[128];
 };
 
 struct OnlineStatus {
@@ -43,18 +43,14 @@ struct OnlineStatus {
     StatusText percentLight, percentFury;
     StatusText fighter, defender, ranger, archer, mage, priest;
     StatusText warrior, guardian, assassin, hunter, pagan, oracle;
-    bool isAoLLeading = false;
-    bool isUoFLeading = false;
-    int lightPercent = 0;
-    int furyPercent = 0;
+    int lightPercentIntOnline = 0;
+    int furyPercentIntOnline = 0;
 };
 
 struct KillStatus {
     StatusText percentLight, percentFury;
-    bool isAoLLeading = false;
-    bool isUoFLeading = false;
-    int lightPercent = 0;
-    int furyPercent = 0;
+    int lightPercentIntBalance = 0;
+    int furyPercentIntBalance = 0;
 };
 
 struct TextEntry {
@@ -71,10 +67,10 @@ PanelType g_activePanel = PANEL_HIDE;
 PanelUIState* g_activeDraggingPanel = nullptr;
 
 std::map<PanelType, PanelUIState> panels = {
-    { PANEL_HIDE,    {200,-300,250,140,&toolbar_background,nullptr,PANEL_HIDE,{},false,nullptr,0,0,L".\\panel.ini",L"BUTTON_NOTICE_UI",200,-300 } },
-    { PANEL_FEED,    {199,-227,250,140,&killfeed_background,nullptr,PANEL_FEED,{},false,nullptr,0,0,L".\\panel.ini",L"KILL_NOTICE_UI",199,-227 } },
-    { PANEL_BALANCE, {199,-227,250,140,&balance_background,nullptr,PANEL_BALANCE,{},false,nullptr,0,0,L".\\panel.ini",L"BALANCE_NOTICE_UI",199,-227 } },
-    { PANEL_ONLINE,  {199,-227,250,140,&online_background,nullptr,PANEL_ONLINE,{},false,nullptr,0,0,L".\\panel.ini",L"ONLINE_NOTICE_UI",199,-227 } }
+    { PANEL_HIDE,    {200,-300,250,140,&toolbar_background,nullptr,PANEL_HIDE,{},false,nullptr,0,0,L".\\panel.ini",L"BUTTON_NOTICE_UI"} },
+    { PANEL_FEED,    {199,-227,250,140,&killfeed_background,nullptr,PANEL_FEED,{},false,nullptr,0,0,L".\\panel.ini",L"KILL_NOTICE_UI"} },
+    { PANEL_BALANCE, {199,-227,250,140,&balance_background,nullptr,PANEL_BALANCE,{},false,nullptr,0,0,L".\\panel.ini",L"BALANCE_NOTICE_UI"} },
+    { PANEL_ONLINE,  {199,-227,250,140,&online_background,nullptr,PANEL_ONLINE,{},false,nullptr,0,0,L".\\panel.ini",L"ONLINE_NOTICE_UI"} }
 };
 
 std::map<PanelType, PanelUIState> toggleButtons = {
@@ -84,25 +80,22 @@ std::map<PanelType, PanelUIState> toggleButtons = {
     { PANEL_ONLINE,  {154,32,32,32,&online_button,&online_button_hover,PANEL_ONLINE } }
 };
 
-int g_lightPercentIntOnline = 0;
-int g_furyPercentIntOnline = 0;
-int g_lightPercentIntBalance = 0;
-int g_furyPercentIntBalance = 0;
-
 inline void createDefaultConfig(PanelUIState& ui) {
     if (!ui.configFile || !ui.sectionName) return;
     wchar_t buf[32];
-    swprintf(buf, 32, L"%d", ui.defaultOffsetX);
+    swprintf(buf, 32, L"%d", ui.offsetX);
     WritePrivateProfileStringW(ui.sectionName, L"OffsetX", buf, ui.configFile);
-    swprintf(buf, 32, L"%d", ui.defaultOffsetY);
+    swprintf(buf, 32, L"%d", ui.offsetY);
     WritePrivateProfileStringW(ui.sectionName, L"OffsetY", buf, ui.configFile);
 }
 
 inline void loadConfig(PanelUIState& ui) {
     if (!ui.configFile || !ui.sectionName) return;
-    if (_waccess(ui.configFile, 0) != 0) { createDefaultConfig(ui); }
-    ui.offsetX = GetPrivateProfileIntW(ui.sectionName, L"OffsetX", ui.defaultOffsetX, ui.configFile);
-    ui.offsetY = GetPrivateProfileIntW(ui.sectionName, L"OffsetY", ui.defaultOffsetY, ui.configFile);
+    if (_waccess(ui.configFile, 0) != 0) {
+        createDefaultConfig(ui);
+    }
+    ui.offsetX = GetPrivateProfileIntW(ui.sectionName, L"OffsetX", ui.offsetX, ui.configFile);
+    ui.offsetY = GetPrivateProfileIntW(ui.sectionName, L"OffsetY", ui.offsetY, ui.configFile);
     ui.gameHwnd = FindWindowW(L"GAME", nullptr);
 }
 
@@ -115,6 +108,14 @@ inline void saveConfig(PanelUIState& ui) {
     WritePrivateProfileStringW(ui.sectionName, L"OffsetY", buf, ui.configFile);
 }
 
+void updateStatusKill(const char* newNotice) {
+    for (int i = 4; i > 0; --i) {
+        strcpy(feed_texts[i].buffer, feed_texts[i - 1].buffer);
+    }
+    strncpy(feed_texts[0].buffer, newNotice, sizeof(feed_texts[0].buffer) - 1);
+    feed_texts[0].buffer[sizeof(feed_texts[0].buffer) - 1] = '\0';
+}
+
 void updateStatusOnline(const char* val) {
     int total = 0, lightCount = 0, lightPercent = 0, furyCount = 0, furyPercent = 0;
     int fighter = 0, defender = 0, ranger = 0, archer = 0, mage = 0, priest = 0;
@@ -124,8 +125,8 @@ void updateStatusOnline(const char* val) {
         &fighter, &defender, &ranger, &archer, &mage, &priest,
         &warrior, &guardian, &assassin, &hunter, &pagan, &oracle);
     if (matched >= 5 && total > 0) {
-        g_lightPercentIntOnline = lightPercent;
-        g_furyPercentIntOnline = furyPercent;
+        g_onlineStatus.lightPercentIntOnline = lightPercent;
+        g_onlineStatus.furyPercentIntOnline = furyPercent;
         snprintf(g_onlineStatus.total.buffer, 128, "Total: %d", total);
         snprintf(g_onlineStatus.light.buffer, 128, "Light: %d", lightCount);
         snprintf(g_onlineStatus.fury.buffer, 128, "Fury: %d", furyCount);
@@ -143,12 +144,10 @@ void updateStatusOnline(const char* val) {
         snprintf(g_onlineStatus.hunter.buffer, 128, "Hunter: %d", hunter);
         snprintf(g_onlineStatus.pagan.buffer, 128, "Pagan: %d", pagan);
         snprintf(g_onlineStatus.oracle.buffer, 128, "Oracle: %d", oracle);
-        g_onlineStatus.isAoLLeading = (lightPercent >= furyPercent);
-        g_onlineStatus.isUoFLeading = !g_onlineStatus.isAoLLeading;
     }
 }
 
-void updateStatusKill(const char* val) {
+void updateStatusBalance(const char* val) {
     double lightPercent = 0.0, furyPercent = 0.0;
     int matched = sscanf(val, "%lf %lf", &lightPercent, &furyPercent);
     if (matched == 2) {
@@ -156,68 +155,20 @@ void updateStatusKill(const char* val) {
         if (lightPercent > 100.0) lightPercent = 100.0;
         if (furyPercent < 0.0) furyPercent = 0.0;
         if (furyPercent > 100.0) furyPercent = 100.0;
-        g_lightPercentIntBalance = (int)(lightPercent + 0.5);
-        g_furyPercentIntBalance = (int)(furyPercent + 0.5);
+        g_killStatus.lightPercentIntBalance = (int)(lightPercent + 0.5);
+        g_killStatus.furyPercentIntBalance = (int)(furyPercent + 0.5);
         snprintf(g_killStatus.percentLight.buffer, 128, "AoL: %.2f%%%%", lightPercent);
         snprintf(g_killStatus.percentFury.buffer, 128, "UoF: %.2f%%%%", furyPercent);
-        g_killStatus.isAoLLeading = (g_lightPercentIntBalance >= g_furyPercentIntBalance);
-        g_killStatus.isUoFLeading = !g_killStatus.isAoLLeading;
     }
     else {
         strcpy(g_killStatus.percentLight.buffer, "AoL: 0%");
         strcpy(g_killStatus.percentFury.buffer, "UoF: 0%");
-        g_lightPercentIntBalance = 0;
-        g_furyPercentIntBalance = 0;
-        g_killStatus.isAoLLeading = false;
-        g_killStatus.isUoFLeading = false;
+        g_killStatus.lightPercentIntBalance = 0;
+        g_killStatus.furyPercentIntBalance = 0;
     }
 }
 
-void shiftFeedTexts(const char* newNotice) {
-    for (int i = 4; i > 0; --i) {
-    strcpy(feed_texts[i].buffer, feed_texts[i - 1].buffer);
-    }
-    strncpy(feed_texts[0].buffer, newNotice, sizeof(feed_texts[0].buffer) - 1);
-    feed_texts[0].buffer[sizeof(feed_texts[0].buffer) - 1] = '\0';
-}
-
-inline void handle(void* espBase) {
-    const int baseOffset = 84;
-    void* arg = *(void**)((BYTE*)espBase + baseOffset);
-    const char* kill = "[KILL_NOTICE]";
-    const char* balance = "[BALANCE_NOTICE]";
-    const char* online = "[ONLINE_NOTICE]";
-    if (arg == *(void**)kill) {
-        shiftFeedTexts((const char*)((BYTE*)espBase + baseOffset + strlen(kill)));
-        return;
-    }
-    if (arg == *(void**)balance) {
-        updateStatusKill((const char*)((BYTE*)espBase + baseOffset + strlen(balance)));
-        return;
-    }
-    if (arg == *(void**)online) {
-        updateStatusOnline((const char*)((BYTE*)espBase + baseOffset + strlen(online)));
-        return;
-    }
-}
-
-inline void renderProgressBar(int x, int y, int percent, void* barTexture, bool fromRight, int maxWidth) {
-    if (percent < 0) percent = 0;
-    if (percent > 100) percent = 100;
-    int width = (percent * maxWidth) / 100;
-    for (int i = 0; i < width; i++) {
-        int drawX = fromRight ? (x - i) : (x + i);
-        int drawY = y;
-        __asm {
-            push drawY
-            push drawX
-            mov ecx, barTexture
-            call render_tga
-        }
-    }
-}
-
-inline void renderElement(void* background, int x, int y,
+inline void DrawTexture(void* background, int x, int y,
     const char* text = nullptr,
     int r = 255, int g = 255, int b = 255, int a = 0) {
     if (background) {
@@ -225,7 +176,7 @@ inline void renderElement(void* background, int x, int y,
             push y
             push x
             mov ecx, background
-            call render_tga
+            call DrawObjectTexture
         }
     }
     if (text) {
@@ -238,19 +189,35 @@ inline void renderElement(void* background, int x, int y,
             push y
             push x
             push 0x22B69B0
-            call render_text_with_stroke
+            call DrawTextStroke
             add esp, 32
         }
     }
 }
 
-inline void renderPanel(PanelType type) {
+inline void ProgressBar(int x, int y, int percent, void* barTexture, bool fromRight, int maxWidth) {
+    if (percent < 0) percent = 0;
+    if (percent > 100) percent = 100;
+    int width = (percent * maxWidth) / 100;
+    for (int i = 0; i < width; i++) {
+        int drawX = fromRight ? (x - i) : (x + i);
+        int drawY = y;
+        __asm {
+            push drawY
+            push drawX
+            mov ecx, barTexture
+            call DrawObjectTexture
+        }
+    }
+}
+
+inline void PanelDisplay(PanelType type) {
     auto it = panels.find(type);
     if (it == panels.end()) return;
     PanelUIState& ui = it->second;
     int panelX = ui.baseX + ui.offsetX;
     int panelY = ui.baseY + ui.offsetY;
-    renderElement(ui.background, panelX, panelY);
+    DrawTexture(ui.background, panelX, panelY);
     if (type == PANEL_FEED) {
         TextEntry feedTexts[] = {
             {20,32,feed_texts[0].buffer,255,255,255,0},
@@ -260,23 +227,23 @@ inline void renderPanel(PanelType type) {
             {20,112,feed_texts[4].buffer,255,255,255,0}
         };
         for (auto& t : feedTexts) {
-            renderElement(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
+            DrawTexture(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_BALANCE) {
-        renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntBalance, (void*)loadbar_AoL, false, 230);
-        renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntBalance, (void*)loadbar_UoF, true, 230);
+        ProgressBar(panelX + 11, panelY + 32, g_killStatus.lightPercentIntBalance, (void*)loadbar_AoL, false, 230);
+        ProgressBar(panelX + 241, panelY + 32, g_killStatus.furyPercentIntBalance, (void*)loadbar_UoF, true, 230);
         TextEntry killTexts[] = {
             {36,32,g_killStatus.percentLight.buffer,255,255,255,0},
             {150,32,g_killStatus.percentFury.buffer,255,255,255,0}
         };
         for (auto& t : killTexts) {
-            renderElement(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
+            DrawTexture(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
     else if (type == PANEL_ONLINE) {
-        renderProgressBar(panelX + 11, panelY + 32, g_lightPercentIntOnline, (void*)loadbar_AoL, false, 230);
-        renderProgressBar(panelX + 241, panelY + 32, g_furyPercentIntOnline, (void*)loadbar_UoF, true, 230);
+        ProgressBar(panelX + 11, panelY + 32, g_onlineStatus.lightPercentIntOnline, (void*)loadbar_AoL, false, 230);
+        ProgressBar(panelX + 241, panelY + 32, g_onlineStatus.furyPercentIntOnline, (void*)loadbar_UoF, true, 230);
         TextEntry onlineTexts[] = {
             {105,52,g_onlineStatus.total.buffer,0,255,0,0},
             {10,52,g_onlineStatus.light.buffer,0,255,0,0},
@@ -297,12 +264,12 @@ inline void renderPanel(PanelType type) {
             {170,145,g_onlineStatus.oracle.buffer,255,255,255,0}
         };
         for (auto& t : onlineTexts) {
-            renderElement(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
+            DrawTexture(nullptr, panelX + t.offsetX, panelY + t.offsetY, t.text, t.r, t.g, t.b, t.a);
         }
     }
 }
 
-inline void MouseMovement(PanelUIState& ui) {
+inline void MovePanel(PanelUIState& ui) {
     POINT curPos;
     if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
         GetCursorPos(&curPos);
@@ -333,23 +300,23 @@ inline void MouseMovement(PanelUIState& ui) {
     }
 }
 
-inline void doall(void* ebxPtr) {
+inline void UIHandler(void* ebxPtr) {
     int baseX = *(int*)((uintptr_t)ebxPtr + 4);
     int baseY = *(int*)((uintptr_t)ebxPtr + 8);
     for (auto& [type, ui] : panels) {
         ui.baseX = baseX;
         ui.baseY = baseY;
-        MouseMovement(ui);
+        MovePanel(ui);
     }
     if (g_activePanel != PANEL_HIDE) {
-        renderPanel(g_activePanel);
+        PanelDisplay(g_activePanel);
     }
     auto it = panels.find(PANEL_HIDE);
     if (it != panels.end()) {
         PanelUIState& toolbar = it->second;
         int bx = toolbar.baseX + toolbar.offsetX;
         int by = toolbar.baseY + toolbar.offsetY;
-        renderElement(toolbar.background, bx, by);
+        DrawTexture(toolbar.background, bx, by);
         for (auto& [type, btn] : toggleButtons) {
             int btnX = bx + btn.offsetX;
             int btnY = by + btn.offsetY;
@@ -358,22 +325,45 @@ inline void doall(void* ebxPtr) {
             if (btn.gameHwnd) ScreenToClient(btn.gameHwnd, &curPos);
             bool isHover = (curPos.x >= btnX && curPos.x <= btnX + btn.width && curPos.y >= btnY && curPos.y <= btnY + btn.height);
             void* tex = (isHover && btn.hoverBackground) ? btn.hoverBackground : btn.background;
-            renderElement(tex, btnX, btnY);
-            if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {g_activePanel = btn.targetPanel;}
+            DrawTexture(tex, btnX, btnY);
+            if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) && isHover) {
+                g_activePanel = btn.targetPanel;
+            }
         }
     }
 }
 
-auto fn0x551B40 = 0x551B40;
+inline void EventHandle(void* espBase) {
+    const int baseOffset = 84;
+    const char* msg = (const char*)((BYTE*)espBase + baseOffset);
+    struct Trigger {
+        const char* prefix;
+        void (*handler)(const char*);
+    };
+    static const Trigger triggers[] = {
+        { "[KILL_NOTICE]",    updateStatusKill },
+        { "[BALANCE_NOTICE]", updateStatusBalance },
+        { "[ONLINE_NOTICE]",  updateStatusOnline }
+    };
+    for (const auto& t : triggers) {
+        size_t len = strlen(t.prefix);
+        if (strncmp(msg, t.prefix, len) == 0) {
+            t.handler(msg + len);
+            return;
+        }
+    }
+}
+
+auto f0x551B40 = 0x551B40;
 auto u0x47DD8F = 0x47DD8F;
 __declspec(naked) void naked_0x47DD8A() {
     __asm {
         pushad
         push ebx
-        call doall
+        call UIHandler
         add esp, 4
         popad
-        call fn0x551B40
+        call f0x551B40
         jmp u0x47DD8F
     }
 }
@@ -383,7 +373,7 @@ __declspec(naked) void naked_0x5F3740() {
         pushad
         mov eax, esp
         push eax
-        call handle
+        call EventHandle
         add esp, 4
         popad
         ret
@@ -391,7 +381,7 @@ __declspec(naked) void naked_0x5F3740() {
 }
 
 void hook::online() {
-    for (auto& [type, ui] : panels) { loadConfig(ui); }
+    for (auto& [type, ui] : panels) {loadConfig(ui);}
     util::detour((void*)0x47DD8A, naked_0x47DD8A, 5);
     util::detour((void*)0x5F3740, naked_0x5F3740, 5);
 }
